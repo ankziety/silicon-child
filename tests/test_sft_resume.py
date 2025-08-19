@@ -2,6 +2,7 @@
 
 import json
 import signal
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -9,6 +10,9 @@ from unittest.mock import Mock, patch
 import pytest
 import torch
 from datasets import Dataset
+
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ai_infant.data import Store
 from ai_infant.learn.sft import ResumeSafeTrainer
@@ -289,7 +293,7 @@ class TestResumeSafeTrainer:
         """Test job logging functionality."""
         trainer = ResumeSafeTrainer(temp_store)
 
-        job_id = trainer.log_job(
+        trainer.log_job(
             dataset_path="test.jsonl",
             final_model_path="adapters/cand.pt",
             training_time=120.5,

@@ -8,7 +8,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 import torch
 from datasets import Dataset
@@ -126,7 +126,7 @@ class ResumeSafeTrainer:
         self.model = get_peft_model(self.model, lora_config)
         self.model.print_trainable_parameters()
 
-    def tokenize_function(self, examples: Dict[str, List[str]]) -> Dict[str, List[int]]:
+    def tokenize_function(self, examples: dict[str, list[str]]) -> dict[str, list[int]]:
         """Tokenize input/output pairs for training."""
         # Combine input and output with separator for instruction tuning
         texts = []
@@ -179,27 +179,9 @@ class ResumeSafeTrainer:
         # Prepare model and tokenizer
         self.prepare_model_and_tokenizer()
 
-        # Tokenize dataset with a standalone function to avoid hashing issues
-        def standalone_tokenize(examples):
-            """Standalone tokenization function to avoid hashing issues."""
-            texts = []
-            for input_text, output_text in zip(examples["input"], examples["output"]):
-                combined = f"Input: {input_text}\nOutput: {output_text}{self.tokenizer.eos_token}"
-                texts.append(combined)
-
-            tokenized = self.tokenizer(
-                texts,
-                truncation=True,
-                padding=True,
-                max_length=512,
-                return_tensors=None,
-            )
-
-            tokenized["labels"] = tokenized["input_ids"].copy()
-            return tokenized
-
+        # Tokenize dataset
         tokenized_dataset = dataset.map(
-            standalone_tokenize, batched=True, remove_columns=dataset.column_names
+            self.tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
         # Data collator
@@ -242,9 +224,7 @@ class ResumeSafeTrainer:
             print(
                 f"Sample tokenized example: {tokenized_dataset[0] if len(tokenized_dataset) > 0 else 'None'}"
             )
-            train_result = self.trainer.train(
-                resume_from_checkpoint=resume_from_checkpoint
-            )
+            self.trainer.train(resume_from_checkpoint=resume_from_checkpoint)
             training_time = time.time() - start_time
 
             # Save final model
@@ -268,7 +248,7 @@ class ResumeSafeTrainer:
         final_model_path: str,
         training_time: float,
         steps_completed: int,
-        checkpoint_paths: List[str],
+        checkpoint_paths: list[str],
     ) -> str:
         """Log training job."""
         job_id = f"train-{int(time.time() * 1000)}"
