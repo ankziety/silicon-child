@@ -8,9 +8,11 @@ Implemented a production-ready LLM Jury evaluation system using multiple frontie
 ### Key Components
 
 #### LLM Jury System (`ai_infant/learn/eval.py`)
-- **GPT4Judge**: OpenAI GPT-4o-mini based judge for various evaluation types
-- **ClaudeJudge**: Anthropic Claude Haiku based judge for diverse perspectives  
-- **CommandRJudge**: Cohere Command-R based judge for specialized evaluation
+- **GPT4oMiniJudge**: OpenAI GPT-4o-mini based judge for various evaluation types
+- **GPT5Judge**: OpenAI GPT-5 based judge for high-performance evaluation
+- **ClaudeHaikuJudge**: Anthropic Claude Haiku based judge for affordable evaluation
+- **ClaudeSonnetJudge**: Anthropic Claude Sonnet based judge for high-performance evaluation
+- **CommandRPlusJudge**: Cohere Command R+ based judge for specialized evaluation
 - **LLMJury**: Orchestrates multiple judges with configurable aggregation methods
 
 #### Evaluation Criteria
@@ -25,9 +27,11 @@ Implemented a production-ready LLM Jury evaluation system using multiple frontie
 - **Weighted Average**: Configurable weights for judge reliability
 
 #### Jury Configurations
-- **Frontier Jury**: 5 judges (GPT-4 + Claude + Command-R) with specialized evaluation types
+- **Frontier Jury**: 5 judges (GPT-5 + Claude Sonnet) with specialized evaluation types
+- **Affordable Jury**: 5 judges (GPT-4o-mini + Claude Haiku) for cost-effective evaluation
 - **Diverse Jury**: 3 judges from different model families for bias reduction
-- **Specialized Jury**: 4 GPT-4 judges each focusing on specific criteria
+- **Specialized Jury**: 4 GPT-5 judges each focusing on specific criteria
+- **Mixed Jury**: Combination of high-performance and affordable models
 
 #### Promotion System (`scripts/promote.py`)
 - **PromotionManager**: Handles candidate evaluation and promotion decisions
@@ -63,7 +67,7 @@ Implemented a production-ready LLM Jury evaluation system using multiple frontie
 - **Reference-Free**: No need for ground truth data or reference answers
 - **Nuanced Assessment**: LLM judges provide detailed reasoning for scores
 - **Bias Reduction**: Multiple model families reduce individual model biases
-- **Cost Effective**: 7x lower cost than single large model evaluation
+- **Cost Effective**: 70% cost savings with affordable jury configurations
 - **Scalable**: Parallel execution of multiple judges
 - **Human-Aligned**: Better correlation with human judgment
 
@@ -96,9 +100,14 @@ promotion_result = manager.promote_candidate(
 
 ### Environment Setup
 Required environment variables:
-- `OPENAI_API_KEY`: OpenAI API key for GPT-4 judges
-- `ANTHROPIC_API_KEY`: Anthropic API key for Claude judges
-- `COHERE_API_KEY`: Cohere API key for Command-R judges
+- `OPENAI_API_KEY`: OpenAI API key for GPT-4o-mini and GPT-5 judges
+- `ANTHROPIC_API_KEY`: Anthropic API key for Claude Haiku and Claude Sonnet judges
+- `COHERE_API_KEY`: Cohere API key for Command R+ judges
+
+### Documentation
+- **README.md**: Updated with LLM Jury features and usage examples
+- **docs/ADR-0000.md**: Updated architecture decision record
+- **docs/LLM_JURY_GUIDE.md**: Comprehensive guide for the LLM Jury system
 
 ### Next Steps
 - Implement additional evaluation criteria (safety, helpfulness, etc.)
