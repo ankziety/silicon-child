@@ -7,8 +7,11 @@ services:
     volumes:
       - ./data:/app/data
       - ./reports:/app/reports
+      - ./.env:/app/.env
     environment:
       - PYTHONPATH=/app
       - DISPLAY=:99
+    env_file:
+      - .env
     command: python -m ai_infant --duration 10
     restart: unless-stopped
