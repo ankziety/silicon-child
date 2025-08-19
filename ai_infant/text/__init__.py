@@ -1,5 +1,5 @@
 """Text parsing module for AI-Infant research agent."""
 
-from .parse import Parser, ParsedDocument
+from .parse import ParsedDocument, Parser
 
 __all__ = ["Parser", "ParsedDocument"]
