@@ -137,3 +137,95 @@ The LLM Jury approach provides more robust and human-aligned evaluation compared
 - ✅ All eval + promotion actions recorded in JobV1 ledger
 - ✅ Hard failures with clear error messages, no hidden fallbacks
 - ✅ Production-ready API integrations with proper error handling
+
+## 2024-12-19: LoRA Micro-Trainer Implementation (PR-5)
+
+### Overview
+Implemented a complete resume-safe LoRA training system for the AI-Infant project, enabling parameter-efficient fine-tuning of language models on trace data.
+
+### Components Added
+
+#### 1. Dataset Selection (`scripts/select.py`)
+- **Purpose**: Filters top-scoring traces from the store into training datasets
+- **Features**:
+  - Queries traces with evaluation scores, falls back to recent traces
+  - Converts trace input/output pairs to JSONL format
+  - Handles empty datasets gracefully with appropriate warnings
+  - Logs dataset selection as JobV1 entries with metadata
+- **Usage**: `python -m scripts.select --output data/training.jsonl --limit 1000`
+
+#### 2. LoRA Training (`ai_infant/learn/sft.py`)
+- **Purpose**: Resume-safe LoRA adapter training with checkpointing
+- **Features**:
+  - Configurable LoRA parameters (rank, alpha, learning rate)
+  - Automatic checkpoint detection and resume functionality
+  - Signal handling for graceful interruption
+  - Compatible with DialoGPT and other Conv1D-based models
+  - Outputs to `adapters/cand.pt` as specified
+  - Comprehensive JobV1 logging with training metadata
+- **Usage**: `python -m ai_infant.learn.sft --dataset data/training.jsonl --max-steps 1000`
+
+#### 3. Test Suite (`tests/test_sft_resume.py`)
+- **Coverage**: Dataset selection, tokenization, training, checkpointing, JobV1 logging
+- **Features**: Integration tests, mock-based tests, CUDA availability checks
+- **Validation**: End-to-end pipeline testing with actual training runs
+
+### Technical Decisions
+
+#### Model Selection
+- **Base Model**: `microsoft/DialoGPT-small` for initial development
+- **Rationale**: Small model for fast iteration, conversational format suitable for trace data
+- **LoRA Config**: `target_modules=["c_attn"]` for DialoGPT's Conv1D layers
+
+#### Training Configuration
+- **Checkpointing**: Every N steps (configurable, default 100)
+- **Resume Logic**: Automatically detects latest checkpoint and resumes
+- **Tokenization**: Instruction tuning format with input/output pairs
+- **Batch Size**: Minimal (1) for testing, configurable for production
+
+#### Data Pipeline
+- **Format**: JSONL with input/output text pairs
+- **Selection**: Score-based with fallback to recency
+- **Validation**: Graceful handling of empty or malformed data
+
+### Dependencies Added
+- `torch>=2.0.0`: PyTorch for model training
+- `transformers>=4.30.0`: HuggingFace model library
+- `peft>=0.4.0`: Parameter-efficient fine-tuning
+- `datasets>=2.12.0`: Dataset handling
+- `accelerate>=0.20.0`: Distributed training support
+
+### Integration Points
+- **Store Integration**: Uses existing DuckDB store for trace retrieval
+- **Job Logging**: All operations logged as JobV1 entries
+- **Schema Compliance**: Follows existing TraceV1 and JobV1 schemas
+- **Error Handling**: Comprehensive error handling with appropriate logging
+
+### Testing Strategy
+- **Unit Tests**: Individual component testing with mocks
+- **Integration Tests**: End-to-end pipeline validation
+- **CUDA Tests**: Conditional testing based on hardware availability
+- **Resume Tests**: Actual training interruption and resume validation
+
+### Future Considerations
+- **Model Evaluation**: Need evaluation metrics for adapter quality
+- **Hyperparameter Tuning**: Systematic exploration of LoRA parameters
+- **Multi-Model Support**: Extend to other model architectures
+- **Distributed Training**: Multi-GPU support for larger models
+- **Experiment Management**: Track and compare training runs
+
+### Files Modified
+- `pyproject.toml`: Added ML dependencies
+- `.gitignore`: Exclude model files and checkpoints
+- `NOTES.md`: This documentation
+
+### Files Added
+- `scripts/select.py`: Dataset selection script
+- `ai_infant/learn/sft.py`: LoRA training implementation
+- `tests/test_sft_resume.py`: Comprehensive test suite
+
+### Verification
+- All tests pass: `pytest tests/test_sft_resume.py -v`
+- End-to-end pipeline tested with sample data
+- Checkpoint creation and resume functionality verified
+- JobV1 logging validated for all operations
