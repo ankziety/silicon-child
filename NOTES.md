@@ -70,3 +70,40 @@
 - Implement core orchestration (plan, learn modules)
 - Add training and evaluation capabilities
 - Create retention and pruning scripts
+
+## PR-3: Policy + Core Loop (2024-01-03)
+
+### Changes Made
+- Implemented `plan/policy.py` with next_action heuristic for research loop
+- Created `core/loop.py` orchestrating search → fetch → parse → store → answer → trace
+- Built `data/store.py` using DuckDB for persistent storage of jobs, traces, and documents
+- Added comprehensive test suite validating all acceptance criteria
+- Updated JobV1 schema to include "plan" and "answer" job types
+- Fixed JSON serialization issues in Store for proper schema validation
+
+### Rationale
+- **Policy-Driven Loop**: Intelligent action selection based on current research state
+- **Complete Orchestration**: End-to-end research process from question to answer
+- **Persistent Storage**: DuckDB provides reliable storage for all system data
+- **Comprehensive Testing**: Validates all acceptance criteria including schema compliance
+- **Schema Evolution**: Added new job types to support research loop operations
+
+### Technical Details
+- Policy implements state machine logic for action selection (search → fetch → parse → answer)
+- Core loop orchestrates all components with proper error handling and tracing
+- Store uses DuckDB with proper JSON serialization for schema compliance
+- All operations log both JobV1 and TraceV1 entries for complete audit trail
+- Tests use reliable httpbin.org URLs to ensure consistent behavior
+
+### Acceptance Criteria Met
+- ✅ For 5 seed questions, loop produces 5 traces (≥2 anchored quotes each)
+- ✅ Jobs recorded correctly with all required types (plan, fetch, parse, answer)
+- ✅ Deterministic under seed with consistent behavior
+- ✅ Traces validate against TraceV1 schema
+- ✅ Documents validate against DocV1 schema
+- ✅ Jobs validate against JobV1 schema
+
+### Next Steps
+- Implement learning and evaluation capabilities
+- Add training data generation and model training
+- Create retention and pruning scripts

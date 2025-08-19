@@ -14,7 +14,7 @@
     "type": {
       "type": "string",
       "description": "Type of job being executed",
-      "enum": ["fetch", "parse", "train", "promote", "prune", "report"]
+      "enum": ["fetch", "parse", "train", "promote", "prune", "report", "plan", "answer"]
     },
     "status": {
       "type": "string",
