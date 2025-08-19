@@ -94,7 +94,10 @@ class Policy:
 
         try:
             # Check if we have enough quotes to generate an answer
-            if len(state.quotes_collected) >= state.min_quotes_required and not state.answer_generated:
+            if (
+                len(state.quotes_collected) >= state.min_quotes_required
+                and not state.answer_generated
+            ):
                 action = ActionState(
                     action_type=ActionType.ANSWER,
                     input_data={
@@ -104,7 +107,7 @@ class Policy:
                     },
                     created_at=start_time,
                 )
-                
+
                 output_data = {
                     "action_type": "answer",
                     "quotes_count": len(state.quotes_collected),
@@ -121,7 +124,7 @@ class Policy:
                     input_data={"url": next_url},
                     created_at=start_time,
                 )
-                
+
                 output_data = {
                     "action_type": "parse",
                     "url": next_url,
@@ -132,15 +135,20 @@ class Policy:
                 return action
 
             # Check if we need to fetch more URLs
-            if len(state.urls_fetched) < self.max_urls_to_fetch and len(state.search_queries) > 0:
+            if (
+                len(state.urls_fetched) < self.max_urls_to_fetch
+                and len(state.search_queries) > 0
+            ):
                 # Use the next search query to find more URLs
-                next_query = state.search_queries[len(state.urls_fetched) % len(state.search_queries)]
+                next_query = state.search_queries[
+                    len(state.urls_fetched) % len(state.search_queries)
+                ]
                 action = ActionState(
                     action_type=ActionType.FETCH,
                     input_data={"search_query": next_query, "max_results": 3},
                     created_at=start_time,
                 )
-                
+
                 output_data = {
                     "action_type": "fetch",
                     "search_query": next_query,
@@ -161,7 +169,7 @@ class Policy:
                     },
                     created_at=start_time,
                 )
-                
+
                 output_data = {
                     "action_type": "search",
                     "question": state.question,
@@ -182,7 +190,7 @@ class Policy:
                     },
                     created_at=start_time,
                 )
-                
+
                 output_data = {
                     "action_type": "stop",
                     "reason": "max_iterations_reached",
@@ -193,20 +201,26 @@ class Policy:
                 return action
 
             # If we have some quotes but not enough, try to get more
-            if len(state.quotes_collected) > 0 and len(state.quotes_collected) < state.min_quotes_required:
+            if (
+                len(state.quotes_collected) > 0
+                and len(state.quotes_collected) < state.min_quotes_required
+            ):
                 # Try to fetch more URLs with different search queries
                 if len(state.search_queries) > 0:
-                    next_query = state.search_queries[len(state.urls_fetched) % len(state.search_queries)]
+                    next_query = state.search_queries[
+                        len(state.urls_fetched) % len(state.search_queries)
+                    ]
                     action = ActionState(
                         action_type=ActionType.FETCH,
                         input_data={"search_query": next_query, "max_results": 5},
                         created_at=start_time,
                     )
-                    
+
                     output_data = {
                         "action_type": "fetch",
                         "search_query": next_query,
-                        "quotes_needed": state.min_quotes_required - len(state.quotes_collected),
+                        "quotes_needed": state.min_quotes_required
+                        - len(state.quotes_collected),
                         "quotes_collected": len(state.quotes_collected),
                     }
                     self._log_job("plan", {"state": state.model_dump()}, output_data)
@@ -222,7 +236,7 @@ class Policy:
                 },
                 created_at=start_time,
             )
-            
+
             output_data = {
                 "action_type": "stop",
                 "reason": "no_progress_possible",
@@ -248,11 +262,15 @@ class Policy:
             return False
 
         # Stop if we have enough quotes and no more actions to take
-        if len(state.quotes_collected) >= state.min_quotes_required and not self._has_more_actions(state):
+        if len(
+            state.quotes_collected
+        ) >= state.min_quotes_required and not self._has_more_actions(state):
             return False
-        
+
         # Stop if we have enough quotes and no URLs to parse
-        if len(state.quotes_collected) >= state.min_quotes_required and len(state.urls_fetched) == len(state.documents_parsed):
+        if len(state.quotes_collected) >= state.min_quotes_required and len(
+            state.urls_fetched
+        ) == len(state.documents_parsed):
             return False
 
         # Continue if we can still make progress
@@ -263,13 +281,16 @@ class Policy:
         # Can still search for more queries
         if len(state.search_queries) < self.max_search_queries:
             return True
-        
+
         # Can still fetch more URLs
-        if len(state.urls_fetched) < self.max_urls_to_fetch and len(state.search_queries) > 0:
+        if (
+            len(state.urls_fetched) < self.max_urls_to_fetch
+            and len(state.search_queries) > 0
+        ):
             return True
-        
+
         # Can still parse more documents
         if len(state.urls_fetched) > len(state.documents_parsed):
             return True
-        
+
         return False

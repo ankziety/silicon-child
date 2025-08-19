@@ -4,7 +4,7 @@ import json
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import List
 
 import jsonschema
 import pytest
@@ -25,6 +25,7 @@ class TestResearchLoop:
         temp_file.close()
         # Remove the file so DuckDB can create it fresh
         import os
+
         os.unlink(temp_file.name)
         return temp_file.name
 
@@ -70,7 +71,9 @@ class TestResearchLoop:
         assert answer.generated_at is not None
         assert answer.trace_id is not None
 
-    def test_research_loop_logs_jobs(self, research_loop: ResearchLoop, store: Store) -> None:
+    def test_research_loop_logs_jobs(
+        self, research_loop: ResearchLoop, store: Store
+    ) -> None:
         """Test that research loop logs jobs correctly."""
         question = "What is machine learning?"
         research_loop.research(question, max_iterations=5, min_quotes=1)
@@ -83,7 +86,9 @@ class TestResearchLoop:
         expected_types = {"plan", "fetch", "parse", "answer"}
         assert expected_types.issubset(job_types)
 
-    def test_research_loop_logs_traces(self, research_loop: ResearchLoop, store: Store) -> None:
+    def test_research_loop_logs_traces(
+        self, research_loop: ResearchLoop, store: Store
+    ) -> None:
         """Test that research loop logs traces correctly."""
         question = "What is artificial intelligence?"
         research_loop.research(question, max_iterations=3, min_quotes=2)
@@ -101,7 +106,9 @@ class TestResearchLoop:
             assert "timestamp" in trace
             assert "duration_ms" in trace
 
-    def test_research_loop_stores_documents(self, research_loop: ResearchLoop, store: Store) -> None:
+    def test_research_loop_stores_documents(
+        self, research_loop: ResearchLoop, store: Store
+    ) -> None:
         """Test that research loop stores documents correctly."""
         question = "What is web scraping?"
         research_loop.research(question, max_iterations=5, min_quotes=1)
@@ -122,7 +129,9 @@ class TestResearchLoop:
             # This is acceptable for testing purposes
             pass
 
-    def test_research_loop_with_minimum_quotes(self, research_loop: ResearchLoop) -> None:
+    def test_research_loop_with_minimum_quotes(
+        self, research_loop: ResearchLoop
+    ) -> None:
         """Test that research loop respects minimum quotes requirement."""
         question = "What is data science?"
         answer = research_loop.research(question, max_iterations=5, min_quotes=3)
@@ -140,7 +149,9 @@ class TestResearchLoop:
         # Should stop after max iterations even if min quotes not reached
         assert answer.answer is not None
 
-    def test_traces_validate_against_schema(self, research_loop: ResearchLoop, store: Store) -> None:
+    def test_traces_validate_against_schema(
+        self, research_loop: ResearchLoop, store: Store
+    ) -> None:
         """Test that generated traces validate against TraceV1 schema."""
         # Load schema
         schema_path = Path(__file__).parent.parent / "schemas" / "trace.v1.json"
@@ -157,7 +168,9 @@ class TestResearchLoop:
         for trace in traces:
             jsonschema.validate(trace, schema)
 
-    def test_jobs_validate_against_schema(self, research_loop: ResearchLoop, store: Store) -> None:
+    def test_jobs_validate_against_schema(
+        self, research_loop: ResearchLoop, store: Store
+    ) -> None:
         """Test that generated jobs validate against JobV1 schema."""
         # Load schema
         schema_path = Path(__file__).parent.parent / "schemas" / "job.v1.json"
@@ -174,7 +187,9 @@ class TestResearchLoop:
         for job in jobs:
             jsonschema.validate(job, schema)
 
-    def test_documents_validate_against_schema(self, research_loop: ResearchLoop, store: Store) -> None:
+    def test_documents_validate_against_schema(
+        self, research_loop: ResearchLoop, store: Store
+    ) -> None:
         """Test that generated documents validate against DocV1 schema."""
         # Load schema
         schema_path = Path(__file__).parent.parent / "schemas" / "doc.v1.json"
@@ -213,19 +228,21 @@ class TestResearchLoop:
         assert answer1.question == answer2.question
         assert len(answer1.quotes) == len(answer2.quotes)
 
-    def test_seed_questions_produce_traces(self, research_loop: ResearchLoop, seed_questions: List[str]) -> None:
+    def test_seed_questions_produce_traces(
+        self, research_loop: ResearchLoop, seed_questions: List[str]
+    ) -> None:
         """Test that all 5 seed questions produce traces with >=2 anchored quotes."""
         for question in seed_questions:
             answer = research_loop.research(question, max_iterations=5, min_quotes=2)
-            
+
             assert answer is not None
             assert answer.question == question
             assert len(answer.answer) > 0
-            
+
             # Check that we have traces
             traces = research_loop.traces
             assert len(traces) > 0
-            
+
             # Check that we have some quotes (may not reach 2 due to simulation)
             assert len(answer.quotes) >= 0
 

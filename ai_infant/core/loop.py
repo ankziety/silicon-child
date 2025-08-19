@@ -97,7 +97,9 @@ class ResearchLoop:
         job_id = f"search-{int(time.time() * 1000)}"
 
         try:
-            self._log_trace(job_id, "core", "search_start", "started", start_time, action.input_data)
+            self._log_trace(
+                job_id, "core", "search_start", "started", start_time, action.input_data
+            )
 
             # Simple search query generation based on the question
             question = action.input_data["question"]
@@ -107,8 +109,27 @@ class ResearchLoop:
             # Generate search queries by extracting key terms
             words = question.lower().split()
             # Remove common stop words
-            stop_words = {"what", "is", "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by"}
-            key_words = [word for word in words if word not in stop_words and len(word) > 2]
+            stop_words = {
+                "what",
+                "is",
+                "the",
+                "a",
+                "an",
+                "and",
+                "or",
+                "but",
+                "in",
+                "on",
+                "at",
+                "to",
+                "for",
+                "of",
+                "with",
+                "by",
+            }
+            key_words = [
+                word for word in words if word not in stop_words and len(word) > 2
+            ]
 
             new_queries = []
             if len(key_words) >= 2:
@@ -116,7 +137,7 @@ class ResearchLoop:
                 for i in range(0, len(key_words), 2):
                     if len(new_queries) >= max_queries - len(existing_queries):
                         break
-                    query = " ".join(key_words[i:i+2])
+                    query = " ".join(key_words[i : i + 2])
                     if query not in existing_queries:
                         new_queries.append(query)
 
@@ -129,12 +150,28 @@ class ResearchLoop:
                 "total_queries": len(existing_queries) + len(new_queries),
             }
 
-            self._log_trace(job_id, "core", "search_complete", "completed", start_time, action.input_data, result)
+            self._log_trace(
+                job_id,
+                "core",
+                "search_complete",
+                "completed",
+                start_time,
+                action.input_data,
+                result,
+            )
             return result
 
         except Exception as e:
             error_data = {"type": "search_error", "message": str(e), "stack": None}
-            self._log_trace(job_id, "core", "search_failed", "failed", start_time, action.input_data, error_data=error_data)
+            self._log_trace(
+                job_id,
+                "core",
+                "search_failed",
+                "failed",
+                start_time,
+                action.input_data,
+                error_data=error_data,
+            )
             return None
 
     def _execute_fetch(self, action: ActionState) -> Optional[Dict[str, Any]]:
@@ -143,7 +180,9 @@ class ResearchLoop:
         job_id = f"fetch-{int(time.time() * 1000)}"
 
         try:
-            self._log_trace(job_id, "core", "fetch_start", "started", start_time, action.input_data)
+            self._log_trace(
+                job_id, "core", "fetch_start", "started", start_time, action.input_data
+            )
 
             search_query = action.input_data["search_query"]
             max_results = action.input_data.get("max_results", 3)
@@ -180,12 +219,28 @@ class ResearchLoop:
                 "urls_count": len(urls),
             }
 
-            self._log_trace(job_id, "core", "fetch_complete", "completed", start_time, action.input_data, result)
+            self._log_trace(
+                job_id,
+                "core",
+                "fetch_complete",
+                "completed",
+                start_time,
+                action.input_data,
+                result,
+            )
             return result
 
         except Exception as e:
             error_data = {"type": "fetch_error", "message": str(e), "stack": None}
-            self._log_trace(job_id, "core", "fetch_failed", "failed", start_time, action.input_data, error_data=error_data)
+            self._log_trace(
+                job_id,
+                "core",
+                "fetch_failed",
+                "failed",
+                start_time,
+                action.input_data,
+                error_data=error_data,
+            )
             return None
 
     def _execute_parse(self, action: ActionState) -> Optional[Dict[str, Any]]:
@@ -194,7 +249,9 @@ class ResearchLoop:
         job_id = f"parse-{int(time.time() * 1000)}"
 
         try:
-            self._log_trace(job_id, "core", "parse_start", "started", start_time, action.input_data)
+            self._log_trace(
+                job_id, "core", "parse_start", "started", start_time, action.input_data
+            )
 
             url = action.input_data["url"]
 
@@ -204,7 +261,9 @@ class ResearchLoop:
                 raise Exception(f"Failed to fetch URL: {url}")
 
             # Parse the content
-            parsed_doc = self.parser.parse(url, fetch_result.content, fetch_result.mime_type)
+            parsed_doc = self.parser.parse(
+                url, fetch_result.content, fetch_result.mime_type
+            )
             if not parsed_doc:
                 raise Exception(f"Failed to parse content from URL: {url}")
 
@@ -240,12 +299,28 @@ class ResearchLoop:
                 "document_id": doc_data["id"],
             }
 
-            self._log_trace(job_id, "core", "parse_complete", "completed", start_time, action.input_data, result)
+            self._log_trace(
+                job_id,
+                "core",
+                "parse_complete",
+                "completed",
+                start_time,
+                action.input_data,
+                result,
+            )
             return result
 
         except Exception as e:
             error_data = {"type": "parse_error", "message": str(e), "stack": None}
-            self._log_trace(job_id, "core", "parse_failed", "failed", start_time, action.input_data, error_data=error_data)
+            self._log_trace(
+                job_id,
+                "core",
+                "parse_failed",
+                "failed",
+                start_time,
+                action.input_data,
+                error_data=error_data,
+            )
             return None
 
     def _execute_answer(self, action: ActionState) -> Optional[Dict[str, Any]]:
@@ -254,7 +329,9 @@ class ResearchLoop:
         job_id = f"answer-{int(time.time() * 1000)}"
 
         try:
-            self._log_trace(job_id, "core", "answer_start", "started", start_time, action.input_data)
+            self._log_trace(
+                job_id, "core", "answer_start", "started", start_time, action.input_data
+            )
 
             question = action.input_data["question"]
             quotes = action.input_data["quotes"]
@@ -262,10 +339,14 @@ class ResearchLoop:
 
             # Generate answer based on quotes
             if not quotes:
-                answer_text = "I couldn't find enough information to answer this question."
+                answer_text = (
+                    "I couldn't find enough information to answer this question."
+                )
             else:
                 # Simple answer generation - in a real implementation, this would use an LLM
-                quote_texts = [quote["text"] for quote in quotes[:3]]  # Use top 3 quotes
+                quote_texts = [
+                    quote["text"] for quote in quotes[:3]
+                ]  # Use top 3 quotes
                 answer_text = f"Based on the research, I found the following information: {' '.join(quote_texts)}"
 
             # Create answer object
@@ -285,8 +366,16 @@ class ResearchLoop:
                 "trace_id": answer.trace_id,
             }
 
-            self._log_trace(job_id, "core", "answer_complete", "completed", start_time, action.input_data, result)
-            
+            self._log_trace(
+                job_id,
+                "core",
+                "answer_complete",
+                "completed",
+                start_time,
+                action.input_data,
+                result,
+            )
+
             # Log the answer job
             job_data = {
                 "id": job_id,
@@ -308,12 +397,20 @@ class ResearchLoop:
                 },
             }
             self.store.store_job(job_data)
-            
+
             return result
 
         except Exception as e:
             error_data = {"type": "answer_error", "message": str(e), "stack": None}
-            self._log_trace(job_id, "core", "answer_failed", "failed", start_time, action.input_data, error_data=error_data)
+            self._log_trace(
+                job_id,
+                "core",
+                "answer_failed",
+                "failed",
+                start_time,
+                action.input_data,
+                error_data=error_data,
+            )
             return None
 
     def _execute_action(self, action: ActionState) -> Optional[Dict[str, Any]]:
@@ -331,13 +428,22 @@ class ResearchLoop:
         else:
             raise ValueError(f"Unknown action type: {action.action_type}")
 
-    def research(self, question: str, max_iterations: int = 10, min_quotes: int = 2) -> Optional[Answer]:
+    def research(
+        self, question: str, max_iterations: int = 10, min_quotes: int = 2
+    ) -> Optional[Answer]:
         """Execute the complete research loop for a question."""
         start_time = datetime.utcnow()
         job_id = f"research-{int(time.time() * 1000)}"
 
         try:
-            self._log_trace(job_id, "core", "research_start", "started", start_time, {"question": question})
+            self._log_trace(
+                job_id,
+                "core",
+                "research_start",
+                "started",
+                start_time,
+                {"question": question},
+            )
 
             # Initialize research state
             state = ResearchState(
@@ -407,10 +513,26 @@ class ResearchLoop:
                 "traces_count": len(self.traces),
             }
 
-            self._log_trace(job_id, "core", "research_complete", "completed", start_time, {"question": question}, result_data)
+            self._log_trace(
+                job_id,
+                "core",
+                "research_complete",
+                "completed",
+                start_time,
+                {"question": question},
+                result_data,
+            )
             return answer
 
         except Exception as e:
             error_data = {"type": "research_error", "message": str(e), "stack": None}
-            self._log_trace(job_id, "core", "research_failed", "failed", start_time, {"question": question}, error_data=error_data)
+            self._log_trace(
+                job_id,
+                "core",
+                "research_failed",
+                "failed",
+                start_time,
+                {"question": question},
+                error_data=error_data,
+            )
             return None

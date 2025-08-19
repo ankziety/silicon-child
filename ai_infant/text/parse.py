@@ -233,12 +233,12 @@ class Parser:
 
     def parse_pdf(self, url: str, pdf_content: bytes) -> Optional[ParsedDocument]:
         """Parse PDF content to plaintext with metadata and quotes.
-        
+
         Supports:
         - Text-based PDFs with extractable content
         - PDFs with embedded metadata (title, author)
         - Multi-page documents
-        
+
         Limitations:
         - Does not support scanned/image-based PDFs requiring OCR
         - Does not handle password-protected PDFs
@@ -250,6 +250,7 @@ class Parser:
         try:
             # Use pdfplumber to extract text from PDF
             import io
+
             with pdfplumber.open(io.BytesIO(pdf_content)) as pdf:
                 text_content = ""
                 for page in pdf.pages:
@@ -262,9 +263,13 @@ class Parser:
                         error_data = {
                             "type": "page_extraction_error",
                             "message": f"Failed to extract page: {str(page_error)}",
-                            "stack": None
+                            "stack": None,
                         }
-                        self._log_job("parse", {"url": url, "content_type": "pdf", "page": "unknown"}, error_data=error_data)
+                        self._log_job(
+                            "parse",
+                            {"url": url, "content_type": "pdf", "page": "unknown"},
+                            error_data=error_data,
+                        )
                         continue
 
                 # Extract metadata if available

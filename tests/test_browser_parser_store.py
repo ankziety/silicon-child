@@ -205,22 +205,22 @@ class TestParser:
     def test_parse_plain_text(self, parser):
         """Test plain text parsing."""
         text = 'This is plain text with "a quote".'
-        
+
         result = parser.parse("https://example.com/text", text, "text/plain")
-        
+
         assert result is not None
         assert result.url == "https://example.com/text"
         assert result.content == text
         assert len(result.quotes) == 1
         assert result.quotes[0]["text"] == "a quote"
-    
+
     def test_parse_pdf_error_handling(self, parser):
         """Test PDF parsing error handling."""
         # Test with invalid PDF content
         invalid_pdf = b"Not a valid PDF file"
-        
+
         result = parser.parse_pdf("https://example.com/invalid.pdf", invalid_pdf)
-        
+
         # Should return None and log error, not crash
         assert result is None
 
