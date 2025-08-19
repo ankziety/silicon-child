@@ -32,7 +32,12 @@ dependencies = [
     "pdfplumber>=0.10.0",
     "openai>=1.0.0",
     "anthropic>=0.25.0",
-    "cohere>=4.0.0"
+    "cohere>=4.0.0",
+    "torch>=2.0.0",
+    "transformers>=4.30.0",
+    "peft>=0.4.0",
+    "datasets>=2.12.0",
+    "accelerate>=0.20.0"
 ]
 
 [project.optional-dependencies]
