@@ -276,6 +276,39 @@ class Policy:
         # Continue if we can still make progress
         return True
 
+    def should_continue_autonomously(self, state: ResearchState, consecutive_failures: int = 0) -> bool:
+        """Determine if autonomous research should continue - system decides based on curiosity and progress."""
+        # Stop if we have an answer and feel satisfied
+        if state.answer_generated and len(state.quotes_collected) >= 5:
+            return False
+
+        # Stop if too many consecutive failures (system gets frustrated)
+        if consecutive_failures >= 3:
+            return False
+
+        # Stop if we've been researching for a very long time (system gets bored)
+        if state.current_iteration >= 50:
+            return False
+
+        # Continue if we're making progress and finding interesting things
+        if len(state.quotes_collected) > 0 and state.current_iteration < 30:
+            return True
+
+        # Continue if we haven't found much yet (system is curious)
+        if len(state.quotes_collected) < 3:
+            return True
+
+        # Continue if we have more URLs to explore (system wants to see what's there)
+        if len(state.urls_fetched) > len(state.documents_parsed):
+            return True
+
+        # Continue if we can generate more search queries (system wants to explore more angles)
+        if len(state.search_queries) < self.max_search_queries:
+            return True
+
+        # Stop if we feel we've explored enough
+        return False
+
     def _has_more_actions(self, state: ResearchState) -> bool:
         """Check if there are more actions that can be taken."""
         # Can still search for more queries

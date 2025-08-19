@@ -15,6 +15,21 @@ make verify
 make fmt        # Format code
 make typecheck  # Type checking
 make test       # Run tests
+
+# Start the self-curious research agent (default behavior)
+python -m ai_infant
+
+# Run self-curious research for specific duration
+python -m ai_infant --duration 30
+
+# Run research on a specific question
+python -m ai_infant research "What are the latest developments in quantum computing?"
+
+# Run a timed session with predefined questions
+python -m ai_infant session --duration 15
+
+# See all available commands
+python -m ai_infant --help
 ```
 
 ## Features
@@ -24,6 +39,44 @@ make test       # Run tests
 - **Document Processing**: HTML/PDF parsing with anchored quotes
 - **Storage**: DuckDB + JSONL with deduplication
 - **Job Logging**: Complete audit trail of all operations
+
+## Running the System
+
+The AI-Infant research agent is self-curious by default and will autonomously generate and research questions.
+
+### Default Self-Curious Mode
+Start the agent and let it research autonomously:
+```bash
+python -m ai_infant
+```
+
+The system is autonomously curious - it explores topics based on its own interests, follows its curiosity wherever it leads, and decides how much to research without artificial constraints. It generates its own questions and explores them naturally, making its own decisions about what interests it and how deeply to investigate.
+
+Options:
+- `--duration N`: Session duration in minutes (default: 60)
+- `--db-path PATH`: Database path (default: data/ai_infant.db)
+
+### Research Mode
+Run research on a specific question:
+```bash
+python -m ai_infant research "What are the latest developments in quantum computing?"
+```
+
+Options:
+- `--max-iterations N`: Maximum research iterations (default: 20)
+- `--min-quotes N`: Minimum quotes required (default: 3)
+- `--db-path PATH`: Database path (default: data/ai_infant.db)
+
+### Session Mode
+Run a timed research session with predefined questions:
+```bash
+python -m ai_infant session --duration 15
+```
+
+Options:
+- `--duration N`: Session duration in minutes (default: 15)
+- `--questions Q1 Q2 Q3`: Custom list of questions to research
+- `--db-path PATH`: Database path (default: data/ai_infant.db)
 
 ### LLM Jury Evaluation System
 - **Multi-Model Judges**: GPT-4o-mini, GPT-5, Claude Haiku, Claude Sonnet, Command R+

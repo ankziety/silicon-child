@@ -43,13 +43,18 @@ class Answer(BaseModel):
 class ResearchLoop:
     """Core research loop that orchestrates the entire process."""
 
-    def __init__(self, store: Any):
+    def __init__(self, store: Any, headless: bool = False):
         """Initialize research loop with storage."""
         self.store = store
-        self.browser = Browser(store)
+        self.browser = Browser(store, headless=headless)
         self.parser = Parser(store)
         self.policy = Policy(store)
         self.traces: list[TraceEntry] = []
+
+    def close(self):
+        """Close browser and cleanup resources."""
+        if hasattr(self, 'browser'):
+            self.browser.close()
 
     def _generate_trace_id(self) -> str:
         """Generate a unique trace ID."""
@@ -530,6 +535,119 @@ class ResearchLoop:
                 job_id,
                 "core",
                 "research_failed",
+                "failed",
+                start_time,
+                {"question": question},
+                error_data=error_data,
+            )
+            return None
+
+    def research_autonomously(self, question: str) -> Optional[Answer]:
+        """Execute autonomous research - the system decides how much to research."""
+        start_time = datetime.utcnow()
+        job_id = f"autonomous-research-{int(time.time() * 1000)}"
+
+        try:
+            self._log_trace(
+                job_id,
+                "core",
+                "autonomous_research_start",
+                "started",
+                start_time,
+                {"question": question},
+            )
+
+            # Initialize research state with no artificial limits
+            state = ResearchState(
+                question=question,
+                search_queries=[],
+                urls_fetched=[],
+                documents_parsed=[],
+                quotes_collected=[],
+                max_iterations=100,  # High limit, but system decides when to stop
+                min_quotes_required=0,  # No minimum requirement
+            )
+
+            answer_result = None
+            consecutive_failures = 0
+            max_consecutive_failures = 3
+
+            # Autonomous research loop - system decides when to stop
+            while self.policy.should_continue_autonomously(state, consecutive_failures):
+                # Get next action from policy
+                action = self.policy.next_action(state)
+                if not action:
+                    break
+
+                # Execute the action
+                result = self._execute_action(action)
+                if not result:
+                    consecutive_failures += 1
+                    continue
+
+                consecutive_failures = 0  # Reset on success
+
+                # Update state based on action result
+                if action.action_type == ActionType.SEARCH:
+                    state.search_queries.extend(result.get("queries", []))
+                elif action.action_type == ActionType.FETCH:
+                    state.urls_fetched.extend(result.get("urls", []))
+                elif action.action_type == ActionType.PARSE:
+                    state.documents_parsed.append(result.get("url", ""))
+                    state.quotes_collected.extend(result.get("quotes", []))
+                elif action.action_type == ActionType.ANSWER:
+                    answer_result = result
+                    state.answer_generated = result.get("answer", "")
+
+                state.current_iteration += 1
+
+            # Create final answer if we have one
+            if answer_result:
+                answer = Answer(
+                    question=question,
+                    answer=answer_result["answer"],
+                    quotes=state.quotes_collected,
+                    documents_used=answer_result["documents_used"],
+                    generated_at=datetime.utcnow(),
+                    trace_id=job_id,
+                )
+            else:
+                # Create a fallback answer if we couldn't generate one
+                answer = Answer(
+                    question=question,
+                    answer="I explored this topic but couldn't find enough information to provide a comprehensive answer.",
+                    quotes=state.quotes_collected,
+                    documents_used=[],
+                    generated_at=datetime.utcnow(),
+                    trace_id=job_id,
+                )
+
+            result_data = {
+                "answer": answer.answer,
+                "quotes_count": len(answer.quotes),
+                "documents_used": answer.documents_used,
+                "iterations": state.current_iteration,
+                "traces_count": len(self.traces),
+                "autonomous": True,
+            }
+
+            self._log_trace(
+                job_id,
+                "core",
+                "autonomous_research_complete",
+                "completed",
+                start_time,
+                {"question": question},
+                result_data,
+            )
+            return answer
+
+        except Exception as e:
+            error_data = {"type": "autonomous_research_error", "message": str(e), "stack": None}
+            self._log_trace(
+                job_id,
+                "core",
+                "autonomous_research_failed",
                 "failed",
                 start_time,
                 {"question": question},

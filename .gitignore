@@ -267,5 +267,8 @@ data/*.jsonl
 # Checkpoint files
 adapters/*
 
+# Report files
+reports/*
+
 # Wandb
 wandb/*

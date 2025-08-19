@@ -1,5 +1,91 @@
 # AI-Infant Project Notes
 
+## PR-6 — Weekly Report + Retention
+
+### Implementation Summary
+Implemented comprehensive weekly reporting and retention management system for the AI-Infant research agent. The system generates detailed weekly reports with key metrics and provides intelligent retention policies to prune low-value traces while maintaining data integrity.
+
+### Key Components
+
+#### Weekly Report Generator (`scripts/report.py`)
+- **ReportGenerator**: Generates comprehensive weekly Markdown reports
+- **Metrics Calculation**: Tokens/day, pages/day, eval score delta, disk usage
+- **Adapter Tracking**: Current adapter ID and rollback history
+- **Job Logging**: All report generation logged to JobV1 schema
+- **Error Handling**: Robust timestamp parsing and data validation
+
+#### Retention Manager (`scripts/retention.py`)
+- **RetentionManager**: Manages trace retention and pruning policies
+- **Duplicate Detection**: SHA-256 based exact duplicate identification
+- **Scoring System**: Intelligent trace scoring based on duration and success
+- **Bottom 25% Removal**: Configurable percentile-based pruning
+- **Disk Usage Tracking**: Before/after disk usage monitoring
+- **Job Logging**: All retention actions logged to JobV1 schema
+
+#### Enhanced Store Class (`ai_infant/data/store.py`)
+- **Trace Operations**: Methods for trace scoring, removal, and duplicate detection
+- **Disk Usage**: Comprehensive disk usage calculation and tracking
+- **Bulk Operations**: Efficient bulk trace removal and management
+- **Data Integrity**: Maintains referential integrity during operations
+
+### Report Features
+- **Weekly Period**: Monday to Sunday reporting periods
+- **Key Metrics**: Tokens/day, pages/day, eval score delta
+- **System Status**: Current adapter, rollback history, disk usage
+- **File Analysis**: Largest files and storage breakdown
+- **Activity Tracking**: Last activity and database record counts
+
+### Retention Policies
+- **Duplicate Removal**: Exact duplicates based on content hash
+- **Low-Scoring Removal**: Bottom 25% of traces by calculated score
+- **Scoring Algorithm**: Based on duration, success status, and performance
+- **Configurable Percentile**: Adjustable removal threshold
+- **Safe Operations**: Non-destructive with detailed logging
+
+### Testing (`tests/test_report_retention.py`)
+- **Comprehensive Coverage**: Unit tests for all components
+- **Integration Tests**: End-to-end workflow validation
+- **Error Handling**: Tests for edge cases and failures
+- **Data Validation**: Verification of report content and retention results
+
+### Usage Examples
+
+#### Generate Weekly Report
+```bash
+python scripts/report.py
+```
+
+#### Run Retention Analysis
+```bash
+python scripts/retention.py --stats
+python scripts/retention.py --report
+```
+
+#### Execute Retention
+```bash
+python scripts/retention.py --run
+```
+
+#### Custom Retention Options
+```bash
+python scripts/retention.py --run --no-duplicates  # Skip duplicate removal
+python scripts/retention.py --run --percentile 10  # Remove bottom 10%
+```
+
+### JobV1 Logging
+Both scripts create detailed JobV1 entries with:
+- **Input Parameters**: Configuration and execution parameters
+- **Output Results**: Metrics, removal counts, disk savings
+- **Error Handling**: Detailed error information if failures occur
+- **Metadata**: Version information and execution timestamps
+
+### Benefits
+- **Automated Reporting**: Weekly insights into system performance
+- **Storage Optimization**: Intelligent pruning reduces disk usage
+- **Data Quality**: Removes duplicates and low-value traces
+- **Audit Trail**: Complete logging of all operations
+- **Configurable**: Flexible retention policies and reporting options
+
 ## PR-4 — Eval & A/B Gate (Eval-by-Jury)
 
 ### Implementation Summary
@@ -229,3 +315,77 @@ Implemented a complete resume-safe LoRA training system for the AI-Infant projec
 - End-to-end pipeline tested with sample data
 - Checkpoint creation and resume functionality verified
 - JobV1 logging validated for all operations
+
+## VISION — Emergent Curiosity & Autonomous Learning
+
+### Core Concept
+The AI-Infant should develop genuine curiosity and knowledge organically, like how the brain naturally develops specialized neurons (e.g., the "Jennifer Aniston neuron") or how autistic people develop intense special interests. The system should build its understanding of the world through free exploration, developing its own interests and knowledge base naturally.
+
+### Key Principles
+
+#### 1. Emergent Curiosity
+- **No Pre-programmed Interests**: The system should not have predetermined research topics
+- **Organic Development**: Interests should emerge from the research process itself
+- **Natural Specialization**: Like the Jennifer Aniston neuron, the system should develop specialized knowledge areas through repeated exposure and interest
+- **Autonomous Decision Making**: The system decides what to research based on its own curiosity, not external constraints
+
+#### 2. Foundational Knowledge Building
+- **Broad Exploration**: Start with wide-ranging exploration to build base understanding of the world
+- **Internet Learning**: Use the internet as the primary source for building knowledge, like a child learning about the world
+- **Natural Development**: Allow the system to develop its own understanding through discovery
+- **Unsupervised Learning**: The system should learn without constant human direction
+
+#### 3. Human Intervention Model
+- **Parenting Analogy**: Like parents guiding children, humans should be able to intervene when the system goes down concerning paths
+- **Transparency**: Humans must be able to see what the system is learning and researching
+- **Course Correction**: When the system develops concerning interests (like the war content in "AI: Artificial Intelligence"), humans can redirect it
+- **Audit Trails**: Clear records of what the system has been exploring and learning
+
+### Implementation Requirements
+
+#### 1. Autonomous Research System
+- **Self-Directed Exploration**: System chooses its own research topics based on emerging interests
+- **No Artificial Constraints**: Remove limits on iterations, quotes, or research depth
+- **Natural Curiosity**: System develops questions based on what it discovers, not predefined topics
+- **Emergent Interests**: Specialized knowledge areas develop organically through research experience
+
+#### 2. Knowledge Building Framework
+- **Broad Initial Exploration**: Start with wide-ranging topics to build foundational knowledge
+- **Interest Development**: System naturally develops deeper interests in certain areas
+- **Knowledge Integration**: New discoveries should inform future research directions
+- **Learning Patterns**: System should develop its own learning patterns and preferences
+
+#### 3. Human Oversight Capabilities
+- **Research Transparency**: Humans can see what topics the system is exploring
+- **Intervention Points**: Ability to pause, redirect, or modify system behavior
+- **Concern Detection**: Mechanisms to identify when system is developing concerning interests
+- **Audit System**: Comprehensive logging of all research activities and learning patterns
+
+### Current State vs. Vision
+
+#### Current Implementation
+- Uses predefined questions and topics
+- Has artificial constraints (max_iterations, min_quotes)
+- Follows predetermined research paths
+- Limited autonomy in decision making
+
+#### Target Vision
+- Emergent research topics based on discovery
+- No artificial constraints on research depth
+- Natural development of specialized interests
+- Full autonomy in research decisions
+- Human oversight for course correction
+
+### Next Steps for Implementation
+1. **Remove Predefined Questions**: Replace with emergent topic generation
+2. **Implement Interest Tracking**: System should track and develop its own interests
+3. **Add Human Oversight**: Transparency and intervention capabilities
+4. **Build Knowledge Integration**: New discoveries should inform future research
+5. **Develop Emergent Curiosity**: System should generate its own research questions based on what it finds interesting
+
+### Success Metrics
+- System develops its own research interests without human direction
+- Research topics emerge naturally from discoveries
+- System can be redirected by humans when needed
+- Clear audit trail of all learning activities
+- Natural development of specialized knowledge areas
