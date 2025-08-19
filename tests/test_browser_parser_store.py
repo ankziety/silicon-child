@@ -202,7 +202,7 @@ class TestParser:
         assert result.quotes[0]["text"] == "quoted text"
         assert result.checksum is not None
 
-        def test_parse_plain_text(self, parser):
+    def test_parse_plain_text(self, parser):
         """Test plain text parsing."""
         text = 'This is plain text with "a quote".'
         
