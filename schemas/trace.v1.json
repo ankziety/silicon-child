@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ai-infant.dev/schemas/trace.v1.json",
+  "title": "TraceV1",
+  "description": "Execution trace contract for AI-Infant research agent",
+  "type": "object",
+  "required": ["id", "job_id", "component", "operation", "status", "timestamp", "duration_ms"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this trace entry",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Reference to the parent JobV1 entry",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "component": {
+      "type": "string",
+      "description": "System component that generated this trace",
+      "enum": ["crawl", "text", "learn", "plan", "core"]
+    },
+    "operation": {
+      "type": "string",
+      "description": "Specific operation being traced"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["started", "completed", "failed", "cancelled"],
+      "description": "Current status of the traced operation"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when trace was recorded"
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Duration of the operation in milliseconds"
+    },
+    "input": {
+      "type": ["object", "null"],
+      "description": "Input parameters for the operation (sanitized)"
+    },
+    "output": {
+      "type": ["object", "null"],
+      "description": "Output result of the operation (sanitized)"
+    },
+    "error": {
+      "type": ["object", "null"],
+      "description": "Error details if operation failed"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Version of the component that generated this trace"
+        },
+        "environment": {
+          "type": "string",
+          "description": "Runtime environment identifier"
+        },
+        "correlation_id": {
+          "type": "string",
+          "description": "Correlation ID for distributed tracing"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

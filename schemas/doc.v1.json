@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ai-infant.dev/schemas/doc.v1.json",
+  "title": "DocV1",
+  "description": "Document ingestion contract for AI-Infant research agent",
+  "type": "object",
+  "required": ["id", "url", "content", "metadata", "timestamp"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the document",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Original source URL of the document"
+    },
+    "content": {
+      "type": "string",
+      "description": "Raw text content extracted from the document"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["source", "mime_type", "size_bytes"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Source system or crawler that ingested this document"
+        },
+        "mime_type": {
+          "type": "string",
+          "description": "MIME type of the original document"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Size of the original document in bytes"
+        },
+        "title": {
+          "type": ["string", "null"],
+          "description": "Document title if available"
+        },
+        "author": {
+          "type": ["string", "null"],
+          "description": "Document author if available"
+        },
+        "language": {
+          "type": ["string", "null"],
+          "description": "ISO 639-1 language code"
+        },
+        "checksum": {
+          "type": "string",
+          "description": "SHA-256 checksum of the original content"
+        }
+      }
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when document was ingested"
+    },
+    "processing": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Processing pipeline version that handled this document"
+        },
+        "stage": {
+          "type": "string",
+          "enum": ["raw", "parsed", "validated", "indexed"],
+          "description": "Current processing stage of the document"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

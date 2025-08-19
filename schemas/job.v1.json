@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ai-infant.dev/schemas/job.v1.json",
+  "title": "JobV1",
+  "description": "Job ledger contract for AI-Infant research agent",
+  "type": "object",
+  "required": ["id", "type", "status", "created_at", "updated_at"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the job",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "type": {
+      "type": "string",
+      "description": "Type of job being executed",
+      "enum": ["fetch", "parse", "train", "promote", "prune", "report"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "running", "completed", "failed", "cancelled"],
+      "description": "Current status of the job"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when job was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when job was last updated"
+    },
+    "started_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when job started execution"
+    },
+    "completed_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when job completed execution"
+    },
+    "input": {
+      "type": "object",
+      "description": "Input parameters for the job"
+    },
+    "output": {
+      "type": ["object", "null"],
+      "description": "Output results from the job"
+    },
+    "error": {
+      "type": ["object", "null"],
+      "description": "Error details if job failed",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Error type/classification"
+        },
+        "message": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "stack": {
+          "type": ["string", "null"],
+          "description": "Stack trace if available"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Version of the system that created this job"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Job priority level (0 = lowest, 10 = highest)"
+        },
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of retry attempts made"
+        },
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum number of retry attempts allowed"
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Job timeout in seconds"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
