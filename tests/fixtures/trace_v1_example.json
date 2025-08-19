@@ -1,0 +1,23 @@
+{
+  "id": "trace-2024-001",
+  "job_id": "job-2024-001",
+  "component": "crawl",
+  "operation": "fetch_url",
+  "status": "completed",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "duration_ms": 1250,
+  "input": {
+    "url": "https://example.com/article1",
+    "timeout": 30
+  },
+  "output": {
+    "status_code": 200,
+    "content_length": 1024
+  },
+  "error": null,
+  "metadata": {
+    "version": "1.0.0",
+    "environment": "test",
+    "correlation_id": "corr-2024-001"
+  }
+}

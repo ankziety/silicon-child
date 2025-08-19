@@ -1,0 +1,19 @@
+{
+  "id": "doc-2024-001",
+  "url": "https://example.com/article1",
+  "content": "This is a sample document content for testing purposes.",
+  "metadata": {
+    "source": "test-crawler",
+    "mime_type": "text/html",
+    "size_bytes": 1024,
+    "title": "Sample Document",
+    "author": "Test Author",
+    "language": "en",
+    "checksum": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
+  },
+  "timestamp": "2024-01-01T12:00:00Z",
+  "processing": {
+    "version": "1.0.0",
+    "stage": "validated"
+  }
+}
