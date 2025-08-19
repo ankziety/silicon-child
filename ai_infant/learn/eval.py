@@ -4,7 +4,7 @@ import json
 import os
 import random
 import time
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Optional, Protocol
 
 import openai
 from anthropic import Anthropic
@@ -18,17 +18,17 @@ class EvaluationResult(BaseModel):
     judge_name: str
     score: float
     reasoning: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[dict[str, Any]] = None
 
 
 class JuryResult(BaseModel):
     """Aggregated result from LLM jury evaluation."""
 
     candidate_score: float
-    judge_results: List[EvaluationResult]
+    judge_results: list[EvaluationResult]
     aggregation_method: str
     seed: int
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 class EvaluationError(Exception):
@@ -125,7 +125,7 @@ Provide JSON: {{"score": <0-1>, "reasoning": "<explanation>"}}
             )
 
         except Exception as e:
-            raise EvaluationError(f"GPT-4o-mini evaluation failed: {e}")
+            raise EvaluationError(f"GPT-4o-mini evaluation failed: {e}") from e
 
 
 class GPT5Judge:
@@ -201,7 +201,7 @@ Provide JSON: {{"score": <0-1>, "reasoning": "<explanation>"}}
             )
 
         except Exception as e:
-            raise EvaluationError(f"GPT-5 evaluation failed: {e}")
+            raise EvaluationError(f"GPT-5 evaluation failed: {e}") from e
 
 
 class ClaudeHaikuJudge:
@@ -284,7 +284,7 @@ Provide JSON: {{"score": <0-1>, "reasoning": "<explanation>"}}
             )
 
         except Exception as e:
-            raise EvaluationError(f"Claude Haiku evaluation failed: {e}")
+            raise EvaluationError(f"Claude Haiku evaluation failed: {e}") from e
 
 
 class ClaudeSonnetJudge:
@@ -367,7 +367,7 @@ Provide JSON: {{"score": <0-1>, "reasoning": "<explanation>"}}
             )
 
         except Exception as e:
-            raise EvaluationError(f"Claude Sonnet 4 evaluation failed: {e}")
+            raise EvaluationError(f"Claude Sonnet 4 evaluation failed: {e}") from e
 
 
 class CommandRPlusJudge:
@@ -447,13 +447,13 @@ Provide JSON: {{"score": <0-1>, "reasoning": "<explanation>"}}
             )
 
         except Exception as e:
-            raise EvaluationError(f"Command R+ evaluation failed: {e}")
+            raise EvaluationError(f"Command R+ evaluation failed: {e}") from e
 
 
 class LLMJury:
     """LLM Jury system using multiple frontier models as judges."""
 
-    def __init__(self, judges: List[LLMJudge], aggregation_method: str = "average"):
+    def __init__(self, judges: list[LLMJudge], aggregation_method: str = "average"):
         """Initialize jury with LLM judges."""
         if len(judges) < 3:
             raise ValueError("LLM Jury must have at least 3 judges")

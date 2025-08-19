@@ -5,7 +5,7 @@ import time
 from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from ai_infant.data.store import Store
 from ai_infant.learn.eval import JuryResult, LLMJury
@@ -19,7 +19,7 @@ class AdapterInfo:
         self.score = score
         self.timestamp = timestamp
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for storage."""
         return {
             "model_path": self.model_path,
@@ -28,7 +28,7 @@ class AdapterInfo:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AdapterInfo":
+    def from_dict(cls, data: dict[str, Any]) -> "AdapterInfo":
         """Create from dictionary."""
         return cls(
             model_path=data["model_path"],
@@ -81,9 +81,9 @@ class PromotionManager:
         self,
         job_type: str,
         status: str,
-        input_data: Dict[str, Any],
-        output_data: Optional[Dict[str, Any]] = None,
-        error_data: Optional[Dict[str, Any]] = None,
+        input_data: dict[str, Any],
+        output_data: Optional[dict[str, Any]] = None,
+        error_data: Optional[dict[str, Any]] = None,
     ) -> str:
         """Log a job entry."""
         job_id = f"{job_type}-{int(time.time() * 1000)}"
@@ -139,7 +139,7 @@ class PromotionManager:
             "aggregation_method": self.jury.aggregation_method,
         }
 
-        job_id = self._log_job("eval", "running", input_data)
+        self._log_job("eval", "running", input_data)
 
         try:
             # Run evaluation
@@ -180,7 +180,7 @@ class PromotionManager:
         response: str,
         context: Optional[str] = None,
         seed: Optional[int] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Evaluate and potentially promote a candidate model."""
         # Get current incumbent score
         incumbent_score = self.get_incumbent_score()
@@ -201,7 +201,7 @@ class PromotionManager:
             "adapters_count": len(self.adapters),
         }
 
-        job_id = self._log_job("promote", "running", input_data)
+        self._log_job("promote", "running", input_data)
 
         try:
             # Make promotion decision
@@ -279,7 +279,7 @@ class PromotionManager:
             self._log_job("promote", "failed", input_data, error_data=error_data)
             raise PromotionError(f"Promotion failed: {e}") from e
 
-    def get_adapter_history(self) -> List[Dict[str, Any]]:
+    def get_adapter_history(self) -> list[dict[str, Any]]:
         """Get the current adapter history."""
         return [
             {

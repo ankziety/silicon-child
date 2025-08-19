@@ -3,7 +3,7 @@
 import time
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -22,12 +22,12 @@ class ActionState(BaseModel):
     """State of an action in the research loop."""
 
     action_type: ActionType
-    input_data: Dict[str, Any]
+    input_data: dict[str, Any]
     status: str = "pending"  # pending, running, completed, failed
     created_at: datetime
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    result: Optional[Dict[str, Any]] = None
+    result: Optional[dict[str, Any]] = None
     error: Optional[str] = None
 
 
@@ -35,10 +35,10 @@ class ResearchState(BaseModel):
     """Current state of the research process."""
 
     question: str
-    search_queries: List[str]
-    urls_fetched: List[str]
-    documents_parsed: List[str]
-    quotes_collected: List[Dict[str, Any]]
+    search_queries: list[str]
+    urls_fetched: list[str]
+    documents_parsed: list[str]
+    quotes_collected: list[dict[str, Any]]
     answer_generated: Optional[str] = None
     max_iterations: int = 10
     current_iteration: int = 0
@@ -58,9 +58,9 @@ class Policy:
     def _log_job(
         self,
         job_type: str,
-        input_data: Dict[str, Any],
-        output_data: Optional[Dict[str, Any]] = None,
-        error_data: Optional[Dict[str, Any]] = None,
+        input_data: dict[str, Any],
+        output_data: Optional[dict[str, Any]] = None,
+        error_data: Optional[dict[str, Any]] = None,
     ) -> str:
         """Log a job to the store."""
         job_id = f"{job_type}-{int(time.time() * 1000)}"

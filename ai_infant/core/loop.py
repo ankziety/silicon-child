@@ -4,7 +4,7 @@ import hashlib
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -23,10 +23,10 @@ class TraceEntry(BaseModel):
     status: str
     timestamp: str
     duration_ms: int
-    input: Optional[Dict[str, Any]] = None
-    output: Optional[Dict[str, Any]] = None
-    error: Optional[Dict[str, Any]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    input: Optional[dict[str, Any]] = None
+    output: Optional[dict[str, Any]] = None
+    error: Optional[dict[str, Any]] = None
+    metadata: Optional[dict[str, Any]] = None
 
 
 class Answer(BaseModel):
@@ -34,8 +34,8 @@ class Answer(BaseModel):
 
     question: str
     answer: str
-    quotes: List[Dict[str, Any]]
-    documents_used: List[str]
+    quotes: list[dict[str, Any]]
+    documents_used: list[str]
     generated_at: datetime
     trace_id: str
 
@@ -49,7 +49,7 @@ class ResearchLoop:
         self.browser = Browser(store)
         self.parser = Parser(store)
         self.policy = Policy(store)
-        self.traces: List[TraceEntry] = []
+        self.traces: list[TraceEntry] = []
 
     def _generate_trace_id(self) -> str:
         """Generate a unique trace ID."""
@@ -62,9 +62,9 @@ class ResearchLoop:
         operation: str,
         status: str,
         start_time: datetime,
-        input_data: Optional[Dict[str, Any]] = None,
-        output_data: Optional[Dict[str, Any]] = None,
-        error_data: Optional[Dict[str, Any]] = None,
+        input_data: Optional[dict[str, Any]] = None,
+        output_data: Optional[dict[str, Any]] = None,
+        error_data: Optional[dict[str, Any]] = None,
     ) -> None:
         """Log a trace entry."""
         end_time = datetime.utcnow()
@@ -91,7 +91,7 @@ class ResearchLoop:
         self.traces.append(trace)
         self.store.store_trace(trace.model_dump())
 
-    def _execute_search(self, action: ActionState) -> Optional[Dict[str, Any]]:
+    def _execute_search(self, action: ActionState) -> Optional[dict[str, Any]]:
         """Execute search action to generate search queries."""
         start_time = datetime.utcnow()
         job_id = f"search-{int(time.time() * 1000)}"
@@ -174,7 +174,7 @@ class ResearchLoop:
             )
             return None
 
-    def _execute_fetch(self, action: ActionState) -> Optional[Dict[str, Any]]:
+    def _execute_fetch(self, action: ActionState) -> Optional[dict[str, Any]]:
         """Execute fetch action to retrieve URLs."""
         start_time = datetime.utcnow()
         job_id = f"fetch-{int(time.time() * 1000)}"
@@ -243,7 +243,7 @@ class ResearchLoop:
             )
             return None
 
-    def _execute_parse(self, action: ActionState) -> Optional[Dict[str, Any]]:
+    def _execute_parse(self, action: ActionState) -> Optional[dict[str, Any]]:
         """Execute parse action to extract content and quotes."""
         start_time = datetime.utcnow()
         job_id = f"parse-{int(time.time() * 1000)}"
@@ -323,7 +323,7 @@ class ResearchLoop:
             )
             return None
 
-    def _execute_answer(self, action: ActionState) -> Optional[Dict[str, Any]]:
+    def _execute_answer(self, action: ActionState) -> Optional[dict[str, Any]]:
         """Execute answer action to generate final answer with quotes."""
         start_time = datetime.utcnow()
         job_id = f"answer-{int(time.time() * 1000)}"
@@ -413,7 +413,7 @@ class ResearchLoop:
             )
             return None
 
-    def _execute_action(self, action: ActionState) -> Optional[Dict[str, Any]]:
+    def _execute_action(self, action: ActionState) -> Optional[dict[str, Any]]:
         """Execute a single action based on its type."""
         if action.action_type == ActionType.SEARCH:
             return self._execute_search(action)

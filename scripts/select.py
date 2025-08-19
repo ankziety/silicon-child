@@ -7,7 +7,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from ai_infant.data import Store
 
@@ -19,7 +19,7 @@ class DatasetSelector:
         """Initialize dataset selector with store."""
         self.store = store
 
-    def get_top_scoring_traces(self, limit: int = 1000) -> List[Dict[str, Any]]:
+    def get_top_scoring_traces(self, limit: int = 1000) -> list[dict[str, Any]]:
         """Get top-scoring traces from store with fallback to recent traces."""
         # First try to get traces with evaluation scores
         traces_with_scores = self._get_traces_with_scores(limit)
@@ -31,12 +31,12 @@ class DatasetSelector:
         print("No traces with evaluation scores found, using most recent traces")
         return self._get_recent_traces(limit)
 
-    def _get_traces_with_scores(self, limit: int) -> List[Dict[str, Any]]:
+    def _get_traces_with_scores(self, limit: int) -> list[dict[str, Any]]:
         """Get traces that have evaluation scores."""
         # Query traces table for entries with evaluation metadata
         query = """
-        SELECT * FROM traces 
-        WHERE metadata IS NOT NULL 
+        SELECT * FROM traces
+        WHERE metadata IS NOT NULL
         AND metadata LIKE '%score%'
         ORDER BY CAST(JSON_EXTRACT(metadata, '$.score') AS FLOAT) DESC
         LIMIT ?
@@ -52,10 +52,10 @@ class DatasetSelector:
             print(f"Error querying traces with scores: {e}")
             return []
 
-    def _get_recent_traces(self, limit: int) -> List[Dict[str, Any]]:
+    def _get_recent_traces(self, limit: int) -> list[dict[str, Any]]:
         """Get most recent traces as fallback."""
         query = """
-        SELECT * FROM traces 
+        SELECT * FROM traces
         ORDER BY timestamp DESC
         LIMIT ?
         """
@@ -71,8 +71,8 @@ class DatasetSelector:
             return []
 
     def convert_traces_to_jsonl(
-        self, traces: List[Dict[str, Any]]
-    ) -> List[Dict[str, str]]:
+        self, traces: list[dict[str, Any]]
+    ) -> list[dict[str, str]]:
         """Convert traces to training format with input/output pairs."""
         training_data = []
 
@@ -109,7 +109,7 @@ class DatasetSelector:
 
         return ""
 
-    def save_jsonl(self, data: List[Dict[str, str]], output_path: Path) -> None:
+    def save_jsonl(self, data: list[dict[str, str]], output_path: Path) -> None:
         """Save training data to JSONL file."""
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -117,7 +117,7 @@ class DatasetSelector:
             for item in data:
                 f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
-    def log_job(self, input_data: Dict[str, Any], output_data: Dict[str, Any]) -> str:
+    def log_job(self, input_data: dict[str, Any], output_data: dict[str, Any]) -> str:
         """Log dataset selection job."""
         job_id = f"select-{int(time.time() * 1000)}"
         now = datetime.utcnow().isoformat() + "Z"

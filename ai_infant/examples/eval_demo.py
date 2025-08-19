@@ -9,15 +9,16 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from ai_infant.data.store import Store
-from ai_infant.learn.eval import (
+# Import after path setup - noqa: E402
+from ai_infant.data.store import Store  # noqa: E402
+from ai_infant.learn.eval import (  # noqa: E402
     create_affordable_jury,
     create_diverse_jury,
     create_frontier_jury,
     create_mixed_jury,
     create_specialized_jury,
 )
-from scripts.promote import PromotionManager
+from scripts.promote import PromotionManager  # noqa: E402
 
 
 def check_api_keys():

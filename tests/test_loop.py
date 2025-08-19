@@ -4,7 +4,6 @@ import json
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import List
 
 import jsonschema
 import pytest
@@ -40,7 +39,7 @@ class TestResearchLoop:
         return ResearchLoop(store)
 
     @pytest.fixture
-    def seed_questions(self) -> List[str]:
+    def seed_questions(self) -> list[str]:
         """Return 5 seed questions for testing."""
         return [
             "What is Python programming?",
@@ -229,7 +228,7 @@ class TestResearchLoop:
         assert len(answer1.quotes) == len(answer2.quotes)
 
     def test_seed_questions_produce_traces(
-        self, research_loop: ResearchLoop, seed_questions: List[str]
+        self, research_loop: ResearchLoop, seed_questions: list[str]
     ) -> None:
         """Test that all 5 seed questions produce traces with >=2 anchored quotes."""
         for question in seed_questions:
