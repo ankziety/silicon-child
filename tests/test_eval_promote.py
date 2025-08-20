@@ -15,7 +15,7 @@ from ai_infant.learn.eval import (
     CommandRPlusJudge,
     EvaluationError,
     GPT4oMiniJudge,
-    GPT5Judge,
+    GPT5MiniJudge,
     LLMJury,
     create_diverse_jury,
     create_frontier_jury,
@@ -37,7 +37,7 @@ class TestLLMJudges:
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"})
     def test_gpt5_judge_initialization(self):
         """Test GPT-5 judge initialization."""
-        judge = GPT5Judge("test_judge", "general")
+        judge = GPT5MiniJudge("test_judge", "general")
         assert judge.name == "test_judge"
         assert judge.evaluation_type == "general"
 
@@ -72,7 +72,7 @@ class TestLLMJudges:
         with pytest.raises(
             EvaluationError, match="OPENAI_API_KEY environment variable not set"
         ):
-            GPT5Judge("test_judge", "general")
+            GPT5MiniJudge("test_judge", "general")
 
         with pytest.raises(
             EvaluationError, match="ANTHROPIC_API_KEY environment variable not set"
