@@ -352,7 +352,7 @@ class ReasoningEngine:
             # Fallback to basic hypothesis generation
             return self._fallback_generate_hypotheses(content, facts)
 
-    # HATE: I hate that this has to exist, very 
+    # HATE: I hate that this has to exist. hate, hate, hate!
     def _fallback_generate_hypotheses(self, content: str, facts: list) -> list:
         """Fallback hypothesis generation using basic pattern matching."""
         hypotheses = []
@@ -638,7 +638,7 @@ class ReasoningEngine:
         self.working_memory.sources[conclusion_id] = evidence
 
         # Log the conclusion
-        thought_id = self.log_thought(
+        self.log_thought(
             "conclusion",
             f"Conclusion: {conclusion}\nReasoning: {reasoning}",
             confidence=confidence,
@@ -682,7 +682,6 @@ class ReasoningEngine:
 
             conclusion_elem = root.find(".//conclusion")
             if conclusion_elem is not None:
-                verdict = conclusion_elem.find("verdict").text
                 confidence = float(conclusion_elem.find("confidence").text)
                 conclusion_text = conclusion_elem.find("conclusion_text").text
                 reasoning = conclusion_elem.find("reasoning").text
