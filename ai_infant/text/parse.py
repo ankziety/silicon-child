@@ -4,7 +4,7 @@ import hashlib
 import re
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import pdfplumber
 from bs4 import BeautifulSoup
@@ -38,18 +38,18 @@ class InteractiveElement(BaseModel):
     aria_label: Optional[str]
     title: Optional[str]
     selector: str
-    action_suggestions: List[str]
+    action_suggestions: list[str]
 
 
 class PageStructure(BaseModel):
     """Analysis of page structure for automation."""
 
-    forms: List[Dict[str, Any]]
-    buttons: List[InteractiveElement]
-    links: List[InteractiveElement]
-    inputs: List[InteractiveElement]
-    navigation_elements: List[InteractiveElement]
-    action_opportunities: List[str]
+    forms: list[dict[str, Any]]
+    buttons: list[InteractiveElement]
+    links: list[InteractiveElement]
+    inputs: list[InteractiveElement]
+    navigation_elements: list[InteractiveElement]
+    action_opportunities: list[str]
 
 
 class Parser:
@@ -295,7 +295,7 @@ class Parser:
 
     def _extract_interactive_elements(
         self, soup: BeautifulSoup
-    ) -> List[InteractiveElement]:
+    ) -> list[InteractiveElement]:
         """Extract interactive elements from HTML for automation analysis."""
         elements = []
 
@@ -457,7 +457,7 @@ class Parser:
 
     def _generate_action_suggestions(
         self, element, element_type: str, text_content: str
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate action suggestions for an interactive element."""
         suggestions = []
 
@@ -730,8 +730,6 @@ class Parser:
         self, url: str, html_content: str
     ) -> tuple[Optional[ParsedDocument], PageStructure]:
         """Parse HTML content with additional automation analysis."""
-        start_time = datetime.utcnow()
-
         try:
             # Parse HTML for basic content
             soup = BeautifulSoup(html_content, "html.parser")

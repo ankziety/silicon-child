@@ -469,13 +469,13 @@ class AdaptiveResearchLoop:
 
         answer_prompt = f"""
         Based on the research conducted, provide a comprehensive answer to: {self.current_session.question}
-        
+
         Context:
         - Conclusions reached: {self.current_session.conclusions}
         - Sources consulted: {len(self.current_session.sources_used)} sources
         - Reasoning steps: {self.current_session.reasoning_summary["total_thoughts"]} thoughts
         - Learning updates: {self.current_session.learning_stats["update_count"]} model updates
-        
+
         Provide a well-structured answer that:
         1. Directly addresses the question
         2. Summarizes key findings

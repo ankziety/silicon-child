@@ -202,7 +202,7 @@ class Browser:
                 description_elem = self.page.query_selector('meta[name="description"]')
                 if description_elem:
                     description = description_elem.get_attribute("content")
-            except:
+            except Exception:
                 pass
 
             return title, description
@@ -210,7 +210,7 @@ class Browser:
         except Exception:
             return None, None
 
-    def _extract_interactive_elements(self) -> List[InteractiveElement]:
+    def _extract_interactive_elements(self) -> list[InteractiveElement]:
         """Extract all interactive elements from the current page."""
         elements = []
 
@@ -486,7 +486,7 @@ class Browser:
             print(f"Error clicking element {selector}: {e}")
             return False
 
-    def fill_form(self, form_data: Dict[str, str]) -> bool:
+    def fill_form(self, form_data: dict[str, str]) -> bool:
         """Fill form inputs with provided data."""
         try:
             # Log action
@@ -618,7 +618,7 @@ class Browser:
 
     def find_elements_by_text(
         self, text: str, partial_match: bool = True
-    ) -> List[InteractiveElement]:
+    ) -> list[InteractiveElement]:
         """Find elements containing specific text."""
         try:
             elements = []
@@ -654,7 +654,7 @@ class Browser:
             print(f"Error clicking element by text: {e}")
             return False
 
-    def get_action_history(self) -> List[Dict[str, Any]]:
+    def get_action_history(self) -> list[dict[str, Any]]:
         """Get the history of actions performed."""
         return self.action_history.copy()
 

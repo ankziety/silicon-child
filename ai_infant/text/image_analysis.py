@@ -4,7 +4,7 @@ import hashlib
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 import cv2
 import numpy as np
@@ -35,7 +35,7 @@ class VisionAction(BaseModel):
     target_description: str  # Human-readable description of target
     confidence: float  # Confidence score 0-1
     reasoning: str = Field(description="Why this action was recommended")
-    coordinates: Optional[Tuple[int, int]] = Field(
+    coordinates: Optional[tuple[int, int]] = Field(
         default=None, description="Screen coordinates for action"
     )
     text_input: Optional[str] = Field(
@@ -472,8 +472,8 @@ class ImageAnalyzer:
     def _generate_page_description(
         self,
         image: np.ndarray,
-        ui_components: List[str],
-        text_regions: List[Dict[str, Any]],
+        ui_components: list[str],
+        text_regions: list[dict[str, Any]],
         content_type: str,
     ) -> str:
         """Generate a human-readable description of the page."""
@@ -525,7 +525,6 @@ class ImageAnalyzer:
         try:
             # Convert to different color spaces
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
             # Detect buttons (rectangular shapes with text)
             edges = cv2.Canny(gray, 50, 150)

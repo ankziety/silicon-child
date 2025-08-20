@@ -8,7 +8,7 @@ enforce_no_fallback=True.
 
 import json
 import os
-from typing import List, Optional
+from typing import Optional
 
 import requests
 
@@ -99,6 +99,7 @@ class FallbackAdapter(LLMAdapter):
     local fallback for basic classification/sentiment tasks when remote aggregators
     are not configured or allowed.
     """
+
     def __init__(self):
         # Try to initialize local models lazily
         self._init_done = False
@@ -115,6 +116,7 @@ class FallbackAdapter(LLMAdapter):
         self._init_done = True
         try:
             from transformers import pipeline
+
             # sentiment and classification pipelines
             try:
                 self._sentiment = pipeline("sentiment-analysis")
@@ -210,7 +212,7 @@ class AggregatorManager:
         if enforce_no_fallback is None:
             env = os.getenv("ENVIRONMENT", "production").lower()
             enforce_no_fallback = True if env == "production" else False
-        self.adapters: List[LLMAdapter] = []
+        self.adapters: list[LLMAdapter] = []
         # Build adapters according to preference order
         prefs = [p.strip().lower() for p in self.preference.split(",") if p.strip()]
 
