@@ -91,6 +91,103 @@ class OpenRouterAdapter(LLMAdapter):
             return resp.text
 
 
+class FallbackAdapter(LLMAdapter):
+    """Local lightweight fallback adapter providing classification and sentiment/tone analysis.
+
+    This adapter attempts to use transformers' pipelines if available, otherwise falls
+    back to very small heuristic analyzers. It is intended as a deterministic,
+    local fallback for basic classification/sentiment tasks when remote aggregators
+    are not configured or allowed.
+    """
+    def __init__(self):
+        # Try to initialize local models lazily
+        self._init_done = False
+        self._sentiment = None
+        self._classifier = None
+
+    def available(self) -> bool:
+        # Always available as a local heuristic (no external keys required)
+        return True
+
+    def _lazy_init(self):
+        if self._init_done:
+            return
+        self._init_done = True
+        try:
+            from transformers import pipeline
+            # sentiment and classification pipelines
+            try:
+                self._sentiment = pipeline("sentiment-analysis")
+            except Exception:
+                self._sentiment = None
+
+            try:
+                self._classifier = pipeline("text-classification")
+            except Exception:
+                self._classifier = None
+
+        except Exception:
+            # transformers not available; fall back to minimal heuristics
+            self._sentiment = None
+            self._classifier = None
+
+    def generate(self, prompt: str, **kwargs) -> str:
+        """Return a small JSON string with classification and sentiment analysis.
+
+        The return is a JSON string like:
+        {"classification": [{"label":..., "score":...}], "sentiment": {"label":..., "score":...}, "text": "..."}
+        """
+        self._lazy_init()
+        out = {"text": prompt}
+
+        # Classification
+        try:
+            if self._classifier:
+                cls = self._classifier(prompt, top_k=3)
+                out["classification"] = cls
+            else:
+                # very small heuristic: look for keywords
+                labels = []
+                low = prompt.lower()
+                if any(w in low for w in ["error", "fail", "exception"]):
+                    labels.append({"label": "bug_report", "score": 0.9})
+                if any(w in low for w in ["how to", "tutorial", "guide", "example"]):
+                    labels.append({"label": "howto", "score": 0.8})
+                if not labels:
+                    labels.append({"label": "other", "score": 0.6})
+                out["classification"] = labels
+        except Exception:
+            out["classification"] = [{"label": "error", "score": 0.0}]
+
+        # Sentiment / tone
+        try:
+            if self._sentiment:
+                s = self._sentiment(prompt, top_k=1)
+                out["sentiment"] = s[0]
+            else:
+                # very small heuristic sentiment
+                low = prompt.lower()
+                pos_words = ["good", "great", "success", "positive", "win", "excellent"]
+                neg_words = ["bad", "error", "fail", "problem", "issue", "incorrect"]
+                score = 0.5
+                for w in pos_words:
+                    if w in low:
+                        score += 0.1
+                for w in neg_words:
+                    if w in low:
+                        score -= 0.1
+                label = "neutral"
+                if score > 0.55:
+                    label = "positive"
+                elif score < 0.45:
+                    label = "negative"
+                out["sentiment"] = {"label": label, "score": round(score, 2)}
+        except Exception:
+            out["sentiment"] = {"label": "unknown", "score": 0.5}
+
+        return json.dumps(out)
+
+
 class AggregatorManager:
     """Aggregator that routes requests to configured adapters.
 
@@ -137,6 +234,17 @@ class AggregatorManager:
             for adapter in (llmz, openrouter):
                 if adapter.available():
                     self.adapters.append(adapter)
+
+        # Always append fallback adapter if none configured and environment allows
+        # (AggregatorManager enforces no-fallback based on enforce_no_fallback flag)
+        fallback = FallbackAdapter()
+        if not self.adapters:
+            # Only add fallback as a last resort when not enforcing no-fallback
+            if not enforce_no_fallback:
+                self.adapters.append(fallback)
+        else:
+            # Keep fallback available at end of list if present; but do not prefer it
+            self.fallback = fallback
 
         if enforce_no_fallback and not self.adapters:
             raise RuntimeError(
