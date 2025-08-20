@@ -128,10 +128,10 @@ Provide JSON: {{"score": <0-1>, "reasoning": "<explanation>"}}
             raise EvaluationError(f"GPT-4o-mini evaluation failed: {e}") from e
 
 
-class GPT5Judge:
-    """GPT-5 based judge using OpenAI API (latest and most capable model)."""
+class GPT5MiniJudge:
+    """OpenAI GPT-5-mini based judge (cheaper default)."""
 
-    def __init__(self, name: str = "gpt5_judge", evaluation_type: str = "general"):
+    def __init__(self, name: str = "gpt5_mini_judge", evaluation_type: str = "general"):
         self.name = name
         self.evaluation_type = evaluation_type
 
@@ -175,7 +175,7 @@ Provide JSON: {{"score": <0-1>, "reasoning": "<explanation>"}}
     def __call__(
         self, prompt: str, response: str, context: Optional[str] = None
     ) -> EvaluationResult:
-        """Evaluate using GPT-5."""
+        """Evaluate using GPT-5-mini."""
         try:
             template = self.prompt_templates[self.evaluation_type]
             formatted_prompt = template.format(
@@ -185,7 +185,7 @@ Provide JSON: {{"score": <0-1>, "reasoning": "<explanation>"}}
             )
 
             completion = self.client.chat.completions.create(
-                model="gpt-5",
+                model="gpt-5-mini",
                 messages=[{"role": "user", "content": formatted_prompt}],
                 response_format={"type": "json_object"},
                 temperature=0.4,
@@ -197,7 +197,10 @@ Provide JSON: {{"score": <0-1>, "reasoning": "<explanation>"}}
                 judge_name=self.name,
                 score=float(result["score"]),
                 reasoning=result["reasoning"],
-                metadata={"evaluation_type": self.evaluation_type, "model": "gpt-5"},
+                metadata={
+                    "evaluation_type": self.evaluation_type,
+                    "model": "gpt-5-mini",
+                },
             )
 
         except Exception as e:
@@ -522,10 +525,10 @@ class LLMJury:
 def create_frontier_jury() -> LLMJury:
     """Create a jury with frontier model judges."""
     judges = [
-        GPT5Judge("gpt5_accuracy", "accuracy"),
+        GPT5MiniJudge("gpt5_mini_accuracy", "accuracy"),
         ClaudeSonnetJudge("claude_sonnet_fluency", "fluency"),
         CommandRPlusJudge("commandr_plus_relevance", "relevance"),
-        GPT5Judge("gpt5_coherence", "coherence"),
+        GPT5MiniJudge("gpt5_mini_coherence", "coherence"),
         ClaudeSonnetJudge("claude_sonnet_general", "general"),
     ]
     return LLMJury(judges, aggregation_method="average")
@@ -534,7 +537,7 @@ def create_frontier_jury() -> LLMJury:
 def create_diverse_jury() -> LLMJury:
     """Create a diverse jury with different model families."""
     judges = [
-        GPT5Judge("gpt5_general", "general"),
+        GPT5MiniJudge("gpt5_mini_general", "general"),
         ClaudeSonnetJudge("claude_sonnet_general", "general"),
         CommandRPlusJudge("commandr_plus_general", "general"),
     ]
@@ -556,10 +559,10 @@ def create_affordable_jury() -> LLMJury:
 def create_specialized_jury() -> LLMJury:
     """Create a specialized jury for specific evaluation criteria."""
     judges = [
-        GPT5Judge("gpt5_accuracy", "accuracy"),
-        GPT5Judge("gpt5_fluency", "fluency"),
-        GPT5Judge("gpt5_relevance", "relevance"),
-        GPT5Judge("gpt5_coherence", "coherence"),
+        GPT5MiniJudge("gpt5_mini_accuracy", "accuracy"),
+        GPT5MiniJudge("gpt5_mini_fluency", "fluency"),
+        GPT5MiniJudge("gpt5_mini_relevance", "relevance"),
+        GPT5MiniJudge("gpt5_mini_coherence", "coherence"),
     ]
     return LLMJury(judges, aggregation_method="weighted_average")
 
@@ -567,7 +570,7 @@ def create_specialized_jury() -> LLMJury:
 def create_mixed_jury() -> LLMJury:
     """Create a mixed jury with both high-performance and affordable models."""
     judges = [
-        GPT5Judge("gpt5_accuracy", "accuracy"),
+        GPT5MiniJudge("gpt5_mini_accuracy", "accuracy"),
         ClaudeHaikuJudge("claude_haiku_fluency", "fluency"),
         CommandRPlusJudge("commandr_plus_relevance", "relevance"),
         GPT4oMiniJudge("gpt4o_mini_coherence", "coherence"),

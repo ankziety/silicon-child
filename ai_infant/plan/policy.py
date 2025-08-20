@@ -276,7 +276,9 @@ class Policy:
         # Continue if we can still make progress
         return True
 
-    def should_continue_autonomously(self, state: ResearchState, consecutive_failures: int = 0) -> bool:
+    def should_continue_autonomously(
+        self, state: ResearchState, consecutive_failures: int = 0
+    ) -> bool:
         """Determine if autonomous research should continue - system decides based on curiosity and progress."""
         # Stop if we have an answer and feel satisfied
         if state.answer_generated and len(state.quotes_collected) >= 5:

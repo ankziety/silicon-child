@@ -1,11 +1,11 @@
 """Adaptive research loop with reasoning, learning, and iterative research."""
 
 import json
+import os
 import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-import os
 from typing import Any, Optional
 
 from pydantic import BaseModel
@@ -228,7 +228,9 @@ class AdaptiveResearchLoop:
         print(f"\n🔍 RESEARCHING: {gap.question}")
 
         # Start a vision session for this research goal
-        self.browser.start_vision_session(user_goal=f"Research: {gap.question}", initial_url="https://www.google.com")
+        self.browser.start_vision_session(
+            user_goal=f"Research: {gap.question}", initial_url="https://www.google.com"
+        )
 
         try:
             # Use the gap's search queries for intelligent navigation

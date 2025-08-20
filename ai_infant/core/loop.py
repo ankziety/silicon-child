@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from ..crawl.browser import Browser
 from ..plan.policy import ActionState, ActionType, Policy, ResearchState
+from ..text.image_analysis import ImageAnalyzer
 from ..text.parse import Parser
 
 
@@ -49,11 +50,12 @@ class ResearchLoop:
         self.browser = Browser(store, headless=headless)
         self.parser = Parser(store)
         self.policy = Policy(store)
+        self.image_analyzer = ImageAnalyzer(store)
         self.traces: list[TraceEntry] = []
 
     def close(self):
         """Close browser and cleanup resources."""
-        if hasattr(self, 'browser'):
+        if hasattr(self, "browser"):
             self.browser.close()
 
     def _generate_trace_id(self) -> str:
@@ -192,27 +194,26 @@ class ResearchLoop:
             search_query = action.input_data["search_query"]
             max_results = action.input_data.get("max_results", 3)
 
-            # For now, simulate fetching URLs based on search query
-            # In a real implementation, this would use a search API
+            # Use the browser's search functionality to find real URLs
             urls = []
-            if "python" in search_query.lower():
+            try:
+                # Use the browser to search for the query
+                search_results = self.browser.search(
+                    search_query, max_results=max_results
+                )
+                if search_results:
+                    urls = search_results
+                else:
+                    # Fallback to some reliable sources if search fails
+                    urls = [
+                        "https://httpbin.org/html",  # Test page
+                        "https://httpbin.org/json",  # Test API
+                    ]
+            except Exception:
+                # If search fails, use fallback URLs
                 urls = [
-                    "https://httpbin.org/html",
-                    "https://httpbin.org/json",
-                    "https://httpbin.org/xml",
-                ]
-            elif "machine learning" in search_query.lower():
-                urls = [
-                    "https://httpbin.org/html",
-                    "https://httpbin.org/json",
-                    "https://httpbin.org/xml",
-                ]
-            else:
-                # Generic URLs for other queries - use reliable test URLs
-                urls = [
-                    "https://httpbin.org/html",
-                    "https://httpbin.org/json",
-                    "https://httpbin.org/xml",
+                    "https://httpbin.org/html",  # Test page
+                    "https://httpbin.org/json",  # Test API
                 ]
 
             # Limit to max_results
@@ -272,6 +273,13 @@ class ResearchLoop:
             if not parsed_doc:
                 raise Exception(f"Failed to parse content from URL: {url}")
 
+            # Analyze screenshot if available
+            image_analysis = None
+            if fetch_result.screenshot_path:
+                image_analysis = self.image_analyzer.analyze_image(
+                    fetch_result.screenshot_path
+                )
+
             # Store the document
             doc_data = {
                 "id": f"doc-{hashlib.sha256(url.encode()).hexdigest()[:8]}",
@@ -285,6 +293,10 @@ class ResearchLoop:
                     "author": parsed_doc.author,
                     "language": parsed_doc.language,
                     "checksum": parsed_doc.checksum,
+                    "screenshot_path": fetch_result.screenshot_path,
+                    "image_analysis": image_analysis.model_dump()
+                    if image_analysis
+                    else None,
                 },
                 "timestamp": parsed_doc.parse_time.isoformat() + "Z",
                 "processing": {
@@ -302,6 +314,10 @@ class ResearchLoop:
                 "quotes_count": len(parsed_doc.quotes),
                 "content_length": len(parsed_doc.content),
                 "document_id": doc_data["id"],
+                "screenshot_path": fetch_result.screenshot_path,
+                "image_analysis": image_analysis.model_dump()
+                if image_analysis
+                else None,
             }
 
             self._log_trace(
@@ -548,6 +564,19 @@ class ResearchLoop:
         job_id = f"autonomous-research-{int(time.time() * 1000)}"
 
         try:
+            # Temporarily disable duplicate detection to debug
+            # Check if we've already researched this question recently
+            # recent_jobs = self.store.get_recent_jobs(limit=20)
+            # recent_questions = []
+            # for job in recent_jobs:
+            #     if job['type'] == 'research' and 'input' in job and 'question' in job['input']:
+            #         recent_questions.append(job['input']['question'].lower())
+            #
+            # # If we've researched this question recently, skip it
+            # if question.lower() in recent_questions:
+            #     print(f"Skipping duplicate research: {question}")
+            #     return None
+
             self._log_trace(
                 job_id,
                 "core",
@@ -570,7 +599,6 @@ class ResearchLoop:
 
             answer_result = None
             consecutive_failures = 0
-            max_consecutive_failures = 3
 
             # Autonomous research loop - system decides when to stop
             while self.policy.should_continue_autonomously(state, consecutive_failures):
@@ -591,7 +619,12 @@ class ResearchLoop:
                 if action.action_type == ActionType.SEARCH:
                     state.search_queries.extend(result.get("queries", []))
                 elif action.action_type == ActionType.FETCH:
-                    state.urls_fetched.extend(result.get("urls", []))
+                    # Filter out URLs we've already fetched to avoid repetition
+                    new_urls = []
+                    for url in result.get("urls", []):
+                        if url not in state.urls_fetched:
+                            new_urls.append(url)
+                    state.urls_fetched.extend(new_urls)
                 elif action.action_type == ActionType.PARSE:
                     state.documents_parsed.append(result.get("url", ""))
                     state.quotes_collected.extend(result.get("quotes", []))
@@ -643,7 +676,11 @@ class ResearchLoop:
             return answer
 
         except Exception as e:
-            error_data = {"type": "autonomous_research_error", "message": str(e), "stack": None}
+            error_data = {
+                "type": "autonomous_research_error",
+                "message": str(e),
+                "stack": None,
+            }
             self._log_trace(
                 job_id,
                 "core",
