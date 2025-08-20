@@ -1,0 +1,89 @@
+# Agent Development Files
+# These files are for agent workflow only and should not be committed to main
+
+# Agent workflow documentation
+AGENT.md
+AGENT_TASKS.md
+AGENT_ORCHESTRATION.md
+AGENT_REVIEW.md
+.agentignore
+
+# Development databases (keep only main dev database)
+debug.db
+test*.db
+final_test.db
+test_adaptive.db
+test_lang.db
+test_lang2.db
+test_real.db
+test_reasoning.db
+test.db
+demo_*.db
+
+# Demo and development files
+debug_*.py
+demo_*.py
+*_demo.py
+test_*.py
+simple_demo.py
+real_demo.py
+real_research_demo.py
+vision_browser_demo.py
+test_full_research.py
+test_real_reasoning.py
+test_reasoning_engine.py
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*~
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
+
+# Test artifacts
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+
+# Model checkpoints and adapters (large files)
+adapters/
+checkpoints/
+*.ckpt
+*.pt
+*.bin
+*.h5
+
+# Screenshots and temporary data
+data/screenshots/
+data/vision_screenshots/
+reports/
+*.log
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+secrets/
+*.key
+*.pem

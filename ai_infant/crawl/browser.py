@@ -3,6 +3,7 @@
 import hashlib
 import time
 import urllib.parse
+import urllib.request
 import urllib.robotparser
 from datetime import datetime
 from pathlib import Path
@@ -92,6 +93,9 @@ class Browser:
         # Action history for debugging
         self.action_history: list[dict[str, Any]] = []
 
+        # Confidence threshold for action execution
+        self.confidence_threshold = 0.7
+
         self._init_browser()
 
     def _init_browser(self):
@@ -147,7 +151,17 @@ class Browser:
             parser.set_url(robots_url)
 
             try:
-                parser.read()
+                # Use a more targeted approach to prevent hanging
+                # Set a timeout on the urllib request
+                original_timeout = urllib.request.getdefaulttimeout()
+                if original_timeout is not None:
+                    urllib.request.setdefaulttimeout(2.0)  # 2 second timeout
+                    try:
+                        parser.read()
+                    finally:
+                        urllib.request.setdefaulttimeout(original_timeout)
+                else:
+                    parser.read()
                 self.robots_cache[domain] = parser
             except Exception:
                 # If robots.txt fails, create a permissive parser
@@ -446,13 +460,47 @@ class Browser:
                 screenshot_path=None,
             )
 
-    def click_element(self, selector: str, wait_for_navigation: bool = True) -> bool:
-        """Click an element on the page."""
+    def click_element(
+        self,
+        selector: str,
+        wait_for_navigation: bool = True,
+        confidence: Optional[float] = None,
+    ) -> bool:
+        """Click an element on the page.
+
+        Args:
+            selector: CSS selector for the element
+            wait_for_navigation: Whether to wait for navigation after click
+            confidence: Confidence score (0.0 to 1.0). If provided, validates against threshold.
+
+        Returns:
+            bool: True if element was clicked successfully
+        """
         try:
+            # Validate confidence if provided
+            if confidence is not None and confidence < self.confidence_threshold:
+                print(
+                    f"Click action skipped due to low confidence: {confidence:.2f} < {self.confidence_threshold:.2f}"
+                )
+                print(f"Selector: {selector}")
+
+                # Log skipped action
+                action_data = {
+                    "action": "click",
+                    "selector": selector,
+                    "confidence": confidence,
+                    "reason": "low_confidence",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "url": self.page.url,
+                }
+                self.action_history.append(action_data)
+                return False
+
             # Log action
             action_data = {
                 "action": "click",
                 "selector": selector,
+                "confidence": confidence,
                 "timestamp": datetime.utcnow().isoformat(),
                 "url": self.page.url,
             }
@@ -486,13 +534,43 @@ class Browser:
             print(f"Error clicking element {selector}: {e}")
             return False
 
-    def fill_form(self, form_data: dict[str, str]) -> bool:
-        """Fill form inputs with provided data."""
+    def fill_form(
+        self, form_data: dict[str, str], confidence: Optional[float] = None
+    ) -> bool:
+        """Fill form inputs with provided data.
+
+        Args:
+            form_data: Dictionary mapping field names to values
+            confidence: Confidence score (0.0 to 1.0). If provided, validates against threshold.
+
+        Returns:
+            bool: True if at least one field was filled successfully
+        """
         try:
+            # Validate confidence if provided
+            if confidence is not None and confidence < self.confidence_threshold:
+                print(
+                    f"Fill form action skipped due to low confidence: {confidence:.2f} < {self.confidence_threshold:.2f}"
+                )
+                print(f"Form data: {form_data}")
+
+                # Log skipped action
+                action_data = {
+                    "action": "fill_form",
+                    "form_data": form_data,
+                    "confidence": confidence,
+                    "reason": "low_confidence",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "url": self.page.url,
+                }
+                self.action_history.append(action_data)
+                return False
+
             # Log action
             action_data = {
                 "action": "fill_form",
                 "form_data": form_data,
+                "confidence": confidence,
                 "timestamp": datetime.utcnow().isoformat(),
                 "url": self.page.url,
             }
@@ -595,6 +673,36 @@ class Browser:
             print(f"Element did not appear: {selector}")
             return False
 
+    def select_option(self, selector: str, value: str) -> bool:
+        """Select an option from a dropdown/select element."""
+        try:
+            element = self.page.query_selector(selector)
+            if element:
+                element.select_option(value)
+                print(f"Selected option '{value}' from: {selector}")
+                return True
+            else:
+                print(f"Select element not found: {selector}")
+                return False
+        except Exception as e:
+            print(f"Error selecting option from {selector}: {e}")
+            return False
+
+    def hover_element(self, selector: str) -> bool:
+        """Hover over an element on the page."""
+        try:
+            element = self.page.query_selector(selector)
+            if element:
+                element.hover()
+                print(f"Hovered over element: {selector}")
+                return True
+            else:
+                print(f"Element not found for hover: {selector}")
+                return False
+        except Exception as e:
+            print(f"Error hovering over element {selector}: {e}")
+            return False
+
     def execute_javascript(self, script: str) -> Any:
         """Execute JavaScript code on the page."""
         try:
@@ -653,6 +761,105 @@ class Browser:
         except Exception as e:
             print(f"Error clicking element by text: {e}")
             return False
+
+    def execute_action(
+        self, action_type: str, selector: str, confidence: float, **kwargs
+    ) -> bool:
+        """Execute an action on the page with confidence validation.
+
+        Args:
+            action_type: Type of action ('click', 'fill', 'select', 'hover', etc.)
+            selector: CSS selector for the element
+            confidence: Confidence score (0.0 to 1.0)
+            **kwargs: Additional parameters for the action
+
+        Returns:
+            bool: True if action was executed, False otherwise
+        """
+        try:
+            # Validate confidence threshold
+            if confidence < self.confidence_threshold:
+                print(
+                    f"Action skipped due to low confidence: {confidence:.2f} < {self.confidence_threshold:.2f}"
+                )
+                print(f"Action: {action_type} on selector: {selector}")
+
+                # Log skipped action
+                action_data = {
+                    "action": action_type,
+                    "selector": selector,
+                    "confidence": confidence,
+                    "reason": "low_confidence",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "url": self.page.url if self.page else "",
+                }
+                self.action_history.append(action_data)
+                return False
+
+            # Log action
+            action_data = {
+                "action": action_type,
+                "selector": selector,
+                "confidence": confidence,
+                "timestamp": datetime.utcnow().isoformat(),
+                "url": self.page.url if self.page else "",
+            }
+            self.action_history.append(action_data)
+
+            # Execute action based on type
+            if action_type == "click":
+                return self.click_element(selector)
+            elif action_type == "fill":
+                value = kwargs.get("value", "")
+                if value:
+                    # For fill action, we need to find the field name from the selector
+                    # This is a simplified approach - in practice you'd want more sophisticated field detection
+                    field_name = (
+                        selector.replace("#", "")
+                        .replace(".", "")
+                        .replace("[", "")
+                        .replace("]", "")
+                    )
+                    return self.fill_form({field_name: value})
+                else:
+                    print("Fill action requires 'value' parameter")
+                    return False
+            elif action_type == "select":
+                value = kwargs.get("value", "")
+                if value:
+                    return self.select_option(selector, value)
+                else:
+                    print("Select action requires 'value' parameter")
+                    return False
+            elif action_type == "hover":
+                return self.hover_element(selector)
+            elif action_type == "scroll":
+                return self.scroll_to_element(selector)
+            elif action_type == "wait":
+                timeout = kwargs.get("timeout", 10000)
+                return self.wait_for_element(selector, timeout)
+            else:
+                print(f"Unknown action type: {action_type}")
+                return False
+
+        except Exception as e:
+            print(f"Error executing action {action_type} on {selector}: {e}")
+            return False
+
+    def set_confidence_threshold(self, threshold: float) -> None:
+        """Set the confidence threshold for action execution.
+
+        Args:
+            threshold: New confidence threshold (0.0 to 1.0)
+        """
+        if 0.0 <= threshold <= 1.0:
+            self.confidence_threshold = threshold
+        else:
+            raise ValueError("Confidence threshold must be between 0.0 and 1.0")
+
+    def get_confidence_threshold(self) -> float:
+        """Get the current confidence threshold."""
+        return self.confidence_threshold
 
     def get_action_history(self) -> list[dict[str, Any]]:
         """Get the history of actions performed."""
@@ -783,11 +990,16 @@ class Browser:
 
         # Multiple search engines for better coverage
         search_engines = [
-            f"https://duckduckgo.com/html/?q={urllib.parse.quote(query)}",
             f"https://www.google.com/search?q={urllib.parse.quote(query)}",
             f"https://www.bing.com/search?q={urllib.parse.quote(query)}",
+            f"https://duckduckgo.com/html/?q={urllib.parse.quote(query)}",
             f"https://en.wikipedia.org/w/index.php?search={urllib.parse.quote(query)}",
             f"https://scholar.google.com/scholar?q={urllib.parse.quote(query)}",
+            f"https://www.reddit.com/search?q={urllib.parse.quote(query)}",
+            f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}",
+            f"https://www.amazon.com/s?k={urllib.parse.quote(query)}",
+            f"https://www.ebay.com/sch/i.html?_nkw={urllib.parse.quote(query)}",
+            f"https://www.github.com/search?q={urllib.parse.quote(query)}",
         ]
 
         print(f"🔍 Searching for: {query}")

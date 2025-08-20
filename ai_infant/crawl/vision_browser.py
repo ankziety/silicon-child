@@ -276,9 +276,11 @@ class VisionBrowser(Browser):
 
             result_record: dict[str, Any] = {
                 "timestamp": datetime.utcnow().isoformat(),
-                "action": vision_action.model_dump()
-                if hasattr(vision_action, "model_dump")
-                else vision_action.dict(),
+                "action": (
+                    vision_action.model_dump()
+                    if hasattr(vision_action, "model_dump")
+                    else vision_action.dict()
+                ),
                 "success": False,
                 "error": None,
                 "page_state": None,
@@ -787,14 +789,18 @@ Return the analysis in JSON format with the following structure:
             # Build VisionAnalysis from image analyzer outputs
             va = VisionAnalysis(
                 image_path=screenshot_path,
-                page_description=analysis.content_type
-                if hasattr(analysis, "content_type")
-                else "local page",
+                page_description=(
+                    analysis.content_type
+                    if hasattr(analysis, "content_type")
+                    else "local page"
+                ),
                 interactive_elements=[],
                 recommended_actions=recommended,
-                page_type=analysis.content_type
-                if hasattr(analysis, "content_type")
-                else "unknown",
+                page_type=(
+                    analysis.content_type
+                    if hasattr(analysis, "content_type")
+                    else "unknown"
+                ),
                 navigation_opportunities=[],
                 form_fields=[],
                 buttons=[],
@@ -829,9 +835,11 @@ Return the analysis in JSON format with the following structure:
                     action_type=action.get("action_type", "click"),
                     target_description=action.get("target_description", ""),
                     confidence=action.get("confidence", 0.5),
-                    coordinates=tuple(action.get("coordinates", [0, 0]))
-                    if action.get("coordinates")
-                    else None,
+                    coordinates=(
+                        tuple(action.get("coordinates", [0, 0]))
+                        if action.get("coordinates")
+                        else None
+                    ),
                     text_input=action.get("text_input"),
                     reasoning=action.get("reasoning", ""),
                 )
@@ -1007,9 +1015,11 @@ Return the analysis in JSON format with the following structure:
                                 confidence=proposed.get(
                                     "confidence", action.confidence
                                 ),
-                                coordinates=tuple(proposed.get("coordinates"))
-                                if proposed.get("coordinates")
-                                else action.coordinates,
+                                coordinates=(
+                                    tuple(proposed.get("coordinates"))
+                                    if proposed.get("coordinates")
+                                    else action.coordinates
+                                ),
                                 text_input=proposed.get(
                                     "text_input", action.text_input
                                 ),

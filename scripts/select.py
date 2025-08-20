@@ -224,9 +224,11 @@ def main():
             "trace_count": len(traces),
             "training_examples": len(training_data),
             "output_path": str(args.output),
-            "dataset_size_mb": args.output.stat().st_size / (1024 * 1024)
-            if args.output.exists()
-            else 0,
+            "dataset_size_mb": (
+                args.output.stat().st_size / (1024 * 1024)
+                if args.output.exists()
+                else 0
+            ),
         },
     )
 
