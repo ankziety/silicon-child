@@ -1130,23 +1130,22 @@ Return the analysis in JSON format with the following structure:
                 return 0.8  # Default score if no jury available
 
             # Create evaluation prompt
-            prompt = f"""
-            Evaluate the quality of this vision analysis for browser automation.
-            
-            User Goal: {user_goal}
-            
-            Analysis:
-            - Page Description: {analysis.page_description}
-            - Recommended Actions: {len(analysis.recommended_actions)} actions
-            - Page Type: {analysis.page_type}
-            - Interactive Elements: {len(analysis.interactive_elements)} elements
-            
-            Rate the analysis quality from 0.0 to 1.0 based on:
-            1. Relevance to user goal
-            2. Actionability of recommendations
-            3. Accuracy of page understanding
-            4. Completeness of analysis
-            """
+            prompt = f"""Evaluate the quality of this vision analysis for browser automation.
+
+User Goal: {user_goal}
+
+Analysis:
+- Page Description: {analysis.page_description}
+- Recommended Actions: {len(analysis.recommended_actions)} actions
+- Page Type: {analysis.page_type}
+- Interactive Elements: {len(analysis.interactive_elements)} elements
+
+Rate the analysis quality from 0.0 to 1.0 based on:
+1. Relevance to user goal
+2. Actionability of recommendations
+3. Accuracy of page understanding
+4. Completeness of analysis
+"""
 
             # Create mock response for jury evaluation
             response = f"Vision Analysis Quality Assessment for goal: {user_goal}"
@@ -1168,21 +1167,20 @@ Return the analysis in JSON format with the following structure:
                 return 0.8 if action.success else 0.2
 
             # Create evaluation prompt
-            prompt = f"""
-            Evaluate the success and appropriateness of this browser automation action.
-            
-            User Goal: {user_goal}
-            Action: {action.action_type} - {action.target_description}
-            Success: {action.success}
-            Reasoning: {action.reasoning}
-            Confidence: {action.confidence}
-            
-            Rate from 0.0 to 1.0 based on:
-            1. Technical success
-            2. Progress toward goal
-            3. Appropriateness of action
-            4. Potential for goal achievement
-            """
+            prompt = f"""Evaluate the success and appropriateness of this browser automation action.
+
+User Goal: {user_goal}
+Action: {action.action_type} - {action.target_description}
+Success: {action.success}
+Reasoning: {action.reasoning}
+Confidence: {action.confidence}
+
+Rate from 0.0 to 1.0 based on:
+1. Technical success
+2. Progress toward goal
+3. Appropriateness of action
+4. Potential for goal achievement
+"""
 
             response = f"Action Evaluation: {action.action_type} was {'successful' if action.success else 'unsuccessful'}"
 
@@ -1194,7 +1192,7 @@ Return the analysis in JSON format with the following structure:
             print(f"Error evaluating action success: {e}")
             return 0.7 if action.success else 0.3
 
-    def get_vision_session_summary(self) -> Optional[Dict[str, Any]]:
+    def get_vision_session_summary(self) -> Optional[dict[str, Any]]:
         """Get summary of current vision session."""
         if not self.current_session:
             return None
@@ -1214,8 +1212,8 @@ Return the analysis in JSON format with the following structure:
         """Vision-based search using intelligent browser automation."""
         print(f"🔍 VISION SEARCH: {query}")
 
-        # Start a vision session for this search
-        session_id = self.start_vision_session(
+        # Start a vision session for this search (session id not needed locally)
+        self.start_vision_session(
             user_goal=f"Search for: {query}", initial_url="https://www.google.com"
         )
 
