@@ -6,7 +6,7 @@ import urllib.parse
 import urllib.robotparser
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 from playwright.sync_api import (
@@ -49,7 +49,7 @@ class InteractiveElement(BaseModel):
     title: Optional[str]
     is_visible: bool
     is_enabled: bool
-    bounding_box: Optional[Dict[str, int]]
+    bounding_box: Optional[dict[str, int]]
     selector: str
 
 
@@ -58,10 +58,10 @@ class PageState(BaseModel):
 
     url: str
     title: str
-    interactive_elements: List[InteractiveElement]
-    form_inputs: List[InteractiveElement]
-    buttons: List[InteractiveElement]
-    links: List[InteractiveElement]
+    interactive_elements: list[InteractiveElement]
+    form_inputs: list[InteractiveElement]
+    buttons: list[InteractiveElement]
+    links: list[InteractiveElement]
     page_content: str
     screenshot_path: Optional[str]
 
@@ -90,7 +90,7 @@ class Browser:
         self.screenshot_dir.mkdir(parents=True, exist_ok=True)
 
         # Action history for debugging
-        self.action_history: List[Dict[str, Any]] = []
+        self.action_history: list[dict[str, Any]] = []
 
         self._init_browser()
 
