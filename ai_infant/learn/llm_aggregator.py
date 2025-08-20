@@ -23,37 +23,90 @@ class LLMAdapter:
         raise NotImplementedError()
 
 
-class LLMzAdapter(LLMAdapter):
+class OpenAIAdapter(LLMAdapter):
+    """Adapter for OpenAI-compatible APIs (openai.com or compatible endpoints).
+
+    Environment variables used: OPENAI_API_KEY, OPENAI_API_BASE (optional)
+    """
+
+    def __init__(self, api_key: Optional[str] = None, api_base: Optional[str] = None):
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        # optional custom base URL (for proxy or enterprise)
+        self.api_base = api_base or os.getenv(
+            "OPENAI_API_BASE", "https://api.openai.com"
+        )
+
+    def available(self) -> bool:
+        return bool(self.api_key)
+
+    def generate(self, prompt: str, **kwargs) -> str:
+        if not self.available():
+            raise RuntimeError("OpenAI adapter not configured")
+
+        url = f"{self.api_base.rstrip('/')}/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        data = {
+            "model": kwargs.get("model", "gpt-4o-mini"),
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": kwargs.get("temperature", 0.1),
+            "max_tokens": kwargs.get("max_tokens", 1024),
+        }
+
+        resp = requests.post(url, headers=headers, json=data, timeout=30)
+        resp.raise_for_status()
+
+        try:
+            j = resp.json()
+            # OpenAI chat completion response
+            if "choices" in j and j["choices"]:
+                first = j["choices"][0]
+                # message style
+                if "message" in first and "content" in first["message"]:
+                    return first["message"]["content"]
+                # text fallback
+                if "text" in first:
+                    return first["text"]
+            # fallback: try common fields
+            for key in ("text", "result", "output", "response"):
+                if key in j:
+                    return j[key]
+            return json.dumps(j)
+        except Exception:
+            return resp.text
+
+
+class AnthropicAdapter(LLMAdapter):
+    """Adapter for Anthropic Claude-like APIs.
+
+    Uses ANTHROPIC_API_KEY and optional ANTHROPIC_API_URL.
+    """
+
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None):
-        self.api_key = api_key or os.getenv("LLMZ_API_KEY")
-        self.api_url = api_url or os.getenv("LLMZ_API_URL")
+        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+        self.api_url = api_url or os.getenv("ANTHROPIC_API_URL")
 
     def available(self) -> bool:
         return bool(self.api_key and self.api_url)
 
     def generate(self, prompt: str, **kwargs) -> str:
         if not self.available():
-            raise RuntimeError("LLMz adapter not configured")
+            raise RuntimeError("Anthropic adapter not configured")
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
+        headers = {"x-api-key": self.api_key, "Content-Type": "application/json"}
         data = {"prompt": prompt}
-        # Allow caller to add options
         data.update(kwargs.get("options", {}))
 
         resp = requests.post(self.api_url, headers=headers, json=data, timeout=30)
         resp.raise_for_status()
 
-        # Try JSON response
         try:
             j = resp.json()
-            # common fields: text, result, output
-            for key in ("text", "result", "output", "response"):
+            for key in ("completion", "text", "response", "output"):
                 if key in j:
                     return j[key]
-            # fallback: return full json
             return json.dumps(j)
         except Exception:
             return resp.text
@@ -86,6 +139,88 @@ class OpenRouterAdapter(LLMAdapter):
             for key in ("text", "result", "output", "response"):
                 if key in j:
                     return j[key]
+            return json.dumps(j)
+        except Exception:
+            return resp.text
+
+
+class CohereAdapter(LLMAdapter):
+    """Adapter for Cohere's API (generation/command R+).
+
+    Uses COHERE_API_KEY and optional COHERE_API_URL.
+    """
+
+    def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None):
+        self.api_key = api_key or os.getenv("COHERE_API_KEY")
+        self.api_url = api_url or os.getenv("COHERE_API_URL")
+
+    def available(self) -> bool:
+        return bool(self.api_key and self.api_url)
+
+    def generate(self, prompt: str, **kwargs) -> str:
+        if not self.available():
+            raise RuntimeError("Cohere adapter not configured")
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        data = {"prompt": prompt}
+        data.update(kwargs.get("options", {}))
+
+        resp = requests.post(self.api_url, headers=headers, json=data, timeout=30)
+        resp.raise_for_status()
+
+        try:
+            j = resp.json()
+            for key in ("text", "output", "response"):
+                if key in j:
+                    return j[key]
+            return json.dumps(j)
+        except Exception:
+            return resp.text
+
+
+class HuggingFaceAdapter(LLMAdapter):
+    """Adapter for Hugging Face Inference API.
+
+    Uses HUGGINGFACE_API_KEY and optional HUGGINGFACE_API_URL (model endpoint).
+    """
+
+    def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None):
+        self.api_key = api_key or os.getenv("HUGGINGFACE_API_KEY")
+        self.api_url = api_url or os.getenv("HUGGINGFACE_API_URL")
+
+    def available(self) -> bool:
+        return bool(self.api_key and self.api_url)
+
+    def generate(self, prompt: str, **kwargs) -> str:
+        if not self.available():
+            raise RuntimeError("HuggingFace adapter not configured")
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        data = {"inputs": prompt}
+        data.update(kwargs.get("options", {}))
+
+        resp = requests.post(self.api_url, headers=headers, json=data, timeout=30)
+        resp.raise_for_status()
+
+        try:
+            j = resp.json()
+            # HF inference may return list or dict
+            if isinstance(j, list) and j:
+                first = j[0]
+                if isinstance(first, dict) and "generated_text" in first:
+                    return first["generated_text"]
+                # string-like
+                return str(first)
+            if isinstance(j, dict):
+                for key in ("generated_text", "text", "output"):
+                    if key in j:
+                        return j[key]
             return json.dumps(j)
         except Exception:
             return resp.text
@@ -217,12 +352,17 @@ class AggregatorManager:
         prefs = [p.strip().lower() for p in self.preference.split(",") if p.strip()]
 
         # instantiate known adapters
-        llmz = LLMzAdapter()
+        openai = OpenAIAdapter()
         openrouter = OpenRouterAdapter()
+        anthropic = AnthropicAdapter()
 
+        # Map preference names to adapter instances. Include backward-compat alias
+        # so existing configs that reference `llmz` map to OpenAI by default.
         available_map = {
-            "llmz": llmz,
+            "openai": openai,
             "openrouter": openrouter,
+            "anthropic": anthropic,
+            "llmz": openai,
         }
 
         # If preference provided, honor the order; else include all available in default order
@@ -233,7 +373,7 @@ class AggregatorManager:
                     self.adapters.append(adapter)
         else:
             # default order
-            for adapter in (llmz, openrouter):
+            for adapter in (openai, openrouter, anthropic):
                 if adapter.available():
                     self.adapters.append(adapter)
 

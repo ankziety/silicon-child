@@ -51,7 +51,7 @@ class AdaptiveResearchLoop:
         # Initialize system-wide aggregator and inject into browser
         from ..learn.llm_aggregator import AggregatorManager
 
-        pref = os.getenv("AGGREGATOR_PREFERENCE", "llmz,openrouter")
+        pref = os.getenv("AGGREGATOR_PREFERENCE", "openai,openrouter,anthropic")
         self.aggregator = AggregatorManager(preference=pref)
         self.browser = VisionBrowser(
             store, vision_config=vision_config, headless=headless

@@ -34,6 +34,7 @@ class TestBrowser:
         browser = Browser(store, user_agent="TestBot/1.0")
         assert browser.user_agent == "TestBot/1.0"
         assert browser.rate_limit_delay == 2.0  # Updated to match actual implementation
+        assert browser.confidence_threshold == 0.7  # Default confidence threshold
 
     def test_robots_parser_caching(self, browser):
         """Test robots.txt parser caching."""
@@ -63,7 +64,25 @@ class TestBrowser:
 
         # Mock robots.txt to allow access
         with patch.object(browser, "_can_fetch", return_value=True):
-            result = browser.fetch("https://example.com/test")
+            # Mock browser page methods that the fetch method uses
+            with patch.object(browser, "page") as mock_page:
+                mock_page.content.return_value = (
+                    "<html><body>Test content</body></html>"
+                )
+                mock_page.title.return_value = "Test Page"
+                mock_page.query_selector.return_value = None  # No meta description
+
+                # Mock viewport and response
+                mock_page.viewport_size = {"width": 1920, "height": 1080}
+                mock_response_obj = Mock()
+                mock_response_obj.status = 200
+                mock_response_obj.headers = {"content-type": "text/html"}
+                mock_page.goto.return_value = mock_response_obj
+
+                with patch.object(
+                    browser, "_take_screenshot", return_value="/tmp/test.png"
+                ):
+                    result = browser.fetch("https://example.com/test")
 
         assert result is not None
         assert result.url == "https://example.com/test"
@@ -90,6 +109,313 @@ class TestBrowser:
             result = browser.fetch("https://example.com/error")
 
         assert result is None
+
+    def test_confidence_threshold_management(self, browser):
+        """Test confidence threshold getter and setter."""
+        # Test default threshold
+        assert browser.get_confidence_threshold() == 0.7
+
+        # Test setting valid threshold
+        browser.set_confidence_threshold(0.8)
+        assert browser.get_confidence_threshold() == 0.8
+
+        # Test setting minimum threshold
+        browser.set_confidence_threshold(0.0)
+        assert browser.get_confidence_threshold() == 0.0
+
+        # Test setting maximum threshold
+        browser.set_confidence_threshold(1.0)
+        assert browser.get_confidence_threshold() == 1.0
+
+        # Test invalid threshold raises error
+        with pytest.raises(ValueError):
+            browser.set_confidence_threshold(-0.1)
+
+        with pytest.raises(ValueError):
+            browser.set_confidence_threshold(1.1)
+
+    def test_execute_action_high_confidence(self, browser):
+        """Test execute_action with high confidence."""
+        # Mock page methods
+        with patch.object(browser, "page") as mock_page:
+            with patch.object(browser, "click_element") as mock_click:
+                mock_page.url = "https://example.com"
+                mock_click.return_value = True
+
+                # Execute action with high confidence
+                result = browser.execute_action("click", "#button", 0.9)
+
+                # Should execute successfully
+                assert result is True
+                mock_click.assert_called_once_with("#button")
+
+                # Check action history
+                history = browser.get_action_history()
+                assert len(history) == 1
+                assert history[0]["action"] == "click"
+                assert history[0]["confidence"] == 0.9
+                assert (
+                    "reason" not in history[0]
+                )  # No skip reason for successful actions
+
+    def test_execute_action_low_confidence(self, browser):
+        """Test execute_action with low confidence."""
+        # Mock page methods
+        with patch.object(browser, "page") as mock_page:
+            with patch.object(browser, "click_element") as mock_click:
+                mock_page.url = "https://example.com"
+                mock_click.return_value = True
+
+                # Execute action with low confidence
+                result = browser.execute_action("click", "#button", 0.5)
+
+                # Should be skipped due to low confidence
+                assert result is False
+                mock_click.assert_not_called()
+
+                # Check action history
+                history = browser.get_action_history()
+                assert len(history) == 1
+                assert history[0]["action"] == "click"
+                assert history[0]["confidence"] == 0.5
+                assert history[0]["reason"] == "low_confidence"
+
+    def test_execute_action_unknown_type(self, browser):
+        """Test execute_action with unknown action type."""
+        result = browser.execute_action("unknown_action", "#element", 0.9)
+        assert result is False
+
+    def test_execute_action_fill_without_value(self, browser):
+        """Test execute_action fill type without value parameter."""
+        result = browser.execute_action("fill", "#input", 0.9)
+        assert result is False
+
+    def test_execute_action_fill_with_value(self, browser):
+        """Test execute_action fill type with value parameter."""
+        with patch.object(browser, "page") as mock_page:
+            with patch.object(browser, "fill_form") as mock_fill:
+                mock_page.url = "https://example.com"
+                mock_fill.return_value = True
+
+                result = browser.execute_action(
+                    "fill", "#input", 0.9, value="test value"
+                )
+
+                assert result is True
+                mock_fill.assert_called_once_with({"input": "test value"})
+
+    def test_click_element_with_low_confidence(self, browser):
+        """Test click_element with low confidence parameter."""
+        with patch.object(browser, "page") as mock_page:
+            mock_page.url = "https://example.com"
+            mock_page.wait_for_selector.return_value = None  # Element not found
+
+            # Click with low confidence
+            result = browser.click_element("#button", confidence=0.5)
+
+            # Should be skipped
+            assert result is False
+
+            # Check action history for skipped action
+            history = browser.get_action_history()
+            assert len(history) == 1
+            assert history[0]["action"] == "click"
+            assert history[0]["confidence"] == 0.5
+            assert history[0]["reason"] == "low_confidence"
+
+    def test_fill_form_with_low_confidence(self, browser):
+        """Test fill_form with low confidence parameter."""
+        with patch.object(browser, "page") as mock_page:
+            mock_page.url = "https://example.com"
+
+            # Fill form with low confidence
+            result = browser.fill_form({"username": "test"}, confidence=0.5)
+
+            # Should be skipped
+            assert result is False
+
+            # Check action history for skipped action
+            history = browser.get_action_history()
+            assert len(history) == 1
+            assert history[0]["action"] == "fill_form"
+            assert history[0]["confidence"] == 0.5
+            assert history[0]["reason"] == "low_confidence"
+
+    def test_custom_confidence_threshold(self, browser):
+        """Test custom confidence threshold affects action execution."""
+        # Set custom threshold
+        browser.set_confidence_threshold(0.9)
+
+        with patch.object(browser, "page") as mock_page:
+            with patch.object(browser, "click_element") as mock_click:
+                mock_page.url = "https://example.com"
+                mock_click.return_value = True
+
+                # Test action with confidence below new threshold
+                result = browser.execute_action("click", "#button", 0.8)
+                assert result is False
+                mock_click.assert_not_called()
+
+                # Test action with confidence above new threshold
+                result = browser.execute_action("click", "#button", 0.95)
+                assert result is True
+                mock_click.assert_called_once_with("#button")
+
+    def test_real_world_confidence_scenarios(self, browser):
+        """Test confidence validation with realistic scenarios."""
+        # Scenario 1: High confidence actions should execute
+        high_confidence_actions = [
+            (0.9, "click", "#submit-button"),
+            (0.95, "fill", "#search-input"),
+            (0.85, "hover", ".menu-item"),
+        ]
+
+        with patch.object(browser, "page") as mock_page:
+            with (
+                patch.object(browser, "click_element") as mock_click,
+                patch.object(browser, "fill_form") as mock_fill,
+                patch.object(browser, "hover_element") as mock_hover,
+            ):
+                mock_page.url = "https://example.com"
+                mock_click.return_value = True
+                mock_fill.return_value = True
+                mock_hover.return_value = True
+
+                for confidence, action_type, selector in high_confidence_actions:
+                    if action_type == "click":
+                        result = browser.execute_action(
+                            action_type, selector, confidence
+                        )
+                    elif action_type == "fill":
+                        result = browser.execute_action(
+                            action_type, selector, confidence, value="test"
+                        )
+                    elif action_type == "hover":
+                        result = browser.execute_action(
+                            action_type, selector, confidence
+                        )
+
+                    assert result is True, (
+                        f"High confidence action {action_type} should execute"
+                    )
+
+                # Verify all actions were called
+                assert mock_click.call_count == 1
+                assert mock_fill.call_count == 1
+                assert mock_hover.call_count == 1
+
+                # Check action history
+                history = browser.get_action_history()
+                assert len(history) == 3
+                for i, (confidence, action_type, _) in enumerate(
+                    high_confidence_actions
+                ):
+                    assert history[i]["confidence"] == confidence
+                    assert history[i]["action"] == action_type
+                    assert "reason" not in history[i]
+
+        # Clear action history for next scenario
+        browser.clear_action_history()
+
+        # Scenario 2: Low confidence actions should be rejected
+        low_confidence_actions = [
+            (0.5, "click", "#unreliable-button"),
+            (0.3, "fill", "#uncertain-input"),
+            (0.6, "select", "#questionable-dropdown"),
+        ]
+
+        with patch.object(browser, "page") as mock_page:
+            with (
+                patch.object(browser, "click_element") as mock_click,
+                patch.object(browser, "fill_form") as mock_fill,
+                patch.object(browser, "select_option") as mock_select,
+            ):
+                mock_page.url = "https://example.com"
+
+                for confidence, action_type, selector in low_confidence_actions:
+                    if action_type == "click":
+                        result = browser.execute_action(
+                            action_type, selector, confidence
+                        )
+                    elif action_type == "fill":
+                        result = browser.execute_action(
+                            action_type, selector, confidence, value="test"
+                        )
+                    elif action_type == "select":
+                        result = browser.execute_action(
+                            action_type, selector, confidence, value="option1"
+                        )
+
+                    assert result is False, (
+                        f"Low confidence action {action_type} should be rejected"
+                    )
+
+                # Verify no actions were actually executed
+                mock_click.assert_not_called()
+                mock_fill.assert_not_called()
+                mock_select.assert_not_called()
+
+                # Check action history shows skipped actions
+                history = browser.get_action_history()
+                assert len(history) == 3
+                for i, (confidence, action_type, _) in enumerate(
+                    low_confidence_actions
+                ):
+                    assert history[i]["confidence"] == confidence
+                    assert history[i]["action"] == action_type
+                    assert history[i]["reason"] == "low_confidence"
+
+    def test_confidence_threshold_edge_cases(self, browser):
+        """Test edge cases for confidence threshold validation."""
+        # Test exact threshold value (should execute)
+        with patch.object(browser, "page") as mock_page:
+            with patch.object(browser, "click_element") as mock_click:
+                mock_page.url = "https://example.com"
+                mock_click.return_value = True
+
+                result = browser.execute_action("click", "#button", 0.7)
+                assert result is True
+                mock_click.assert_called_once_with("#button")
+
+        browser.clear_action_history()
+
+        # Test just below threshold (should be rejected)
+        with patch.object(browser, "page") as mock_page:
+            with patch.object(browser, "click_element") as mock_click:
+                mock_page.url = "https://example.com"
+
+                result = browser.execute_action("click", "#button", 0.69)
+                assert result is False
+                mock_click.assert_not_called()
+
+                history = browser.get_action_history()
+                assert len(history) == 1
+                assert history[0]["reason"] == "low_confidence"
+
+    def test_confidence_validation_performance(self, browser):
+        """Test that confidence validation doesn't add significant overhead."""
+        import time
+
+        with patch.object(browser, "page") as mock_page:
+            with patch.object(browser, "click_element") as mock_click:
+                mock_page.url = "https://example.com"
+                mock_click.return_value = True
+
+                # Test multiple actions quickly
+                start_time = time.time()
+                for i in range(100):
+                    result = browser.execute_action("click", f"#button-{i}", 0.9)
+                    assert result is True
+                end_time = time.time()
+
+                # Should complete 100 actions in under 1 second (very generous limit)
+                duration = end_time - start_time
+                assert duration < 1.0, (
+                    f"Confidence validation took too long: {duration:.3f}s"
+                )
+
+                # Verify all actions were executed
+                assert mock_click.call_count == 100
 
 
 class TestParser:

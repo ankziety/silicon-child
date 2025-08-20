@@ -382,13 +382,13 @@ class TestRetentionManager:
         manager = RetentionManager(sample_traces)
 
         # Get initial disk usage
-        initial_usage = sample_traces.get_disk_usage()
+        sample_traces.get_disk_usage()
 
         # Run retention
         result = manager.run_retention()
 
         # Get final disk usage
-        final_usage = sample_traces.get_disk_usage()
+        sample_traces.get_disk_usage()
 
         # Check that disk usage is tracked
         assert "initial_disk_usage_mb" in result

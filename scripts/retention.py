@@ -2,7 +2,7 @@
 
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from ai_infant.data.store import Store
 
@@ -18,9 +18,9 @@ class RetentionManager:
         self,
         job_type: str,
         status: str,
-        input_data: Dict[str, Any],
-        output_data: Optional[Dict[str, Any]] = None,
-        error_data: Optional[Dict[str, Any]] = None,
+        input_data: dict[str, Any],
+        output_data: Optional[dict[str, Any]] = None,
+        error_data: Optional[dict[str, Any]] = None,
     ) -> str:
         """Log a job entry."""
         job_id = f"{job_type}-{int(time.time() * 1000)}"
@@ -41,11 +41,11 @@ class RetentionManager:
         self.store.store_job(job_data)
         return job_id
 
-    def _find_duplicate_traces(self) -> List[str]:
+    def _find_duplicate_traces(self) -> list[str]:
         """Find traces that are exact duplicates based on SHA-256 hash."""
         return self.store.get_duplicate_traces()
 
-    def _find_low_scoring_traces(self, percentile: float = 25.0) -> List[str]:
+    def _find_low_scoring_traces(self, percentile: float = 25.0) -> list[str]:
         """Find the bottom percentile of traces by score."""
         traces = self.store.get_traces()
 
@@ -73,7 +73,7 @@ class RetentionManager:
         remove_duplicates: bool = True,
         remove_low_scoring: bool = True,
         low_scoring_percentile: float = 25.0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run retention process to prune low-value traces."""
         # Log retention start
         input_data = {
@@ -83,7 +83,7 @@ class RetentionManager:
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
 
-        job_id = self._log_job("retention", "running", input_data)
+        self._log_job("retention", "running", input_data)
 
         try:
             # Get initial disk usage
@@ -156,7 +156,7 @@ class RetentionManager:
             self._log_job("retention", "failed", input_data, error_data=error_data)
             raise
 
-    def get_retention_stats(self) -> Dict[str, Any]:
+    def get_retention_stats(self) -> dict[str, Any]:
         """Get current retention statistics."""
         traces = self.store.get_traces()
 

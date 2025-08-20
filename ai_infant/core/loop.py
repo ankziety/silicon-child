@@ -294,9 +294,9 @@ class ResearchLoop:
                     "language": parsed_doc.language,
                     "checksum": parsed_doc.checksum,
                     "screenshot_path": fetch_result.screenshot_path,
-                    "image_analysis": image_analysis.model_dump()
-                    if image_analysis
-                    else None,
+                    "image_analysis": (
+                        image_analysis.model_dump() if image_analysis else None
+                    ),
                 },
                 "timestamp": parsed_doc.parse_time.isoformat() + "Z",
                 "processing": {
@@ -315,9 +315,9 @@ class ResearchLoop:
                 "content_length": len(parsed_doc.content),
                 "document_id": doc_data["id"],
                 "screenshot_path": fetch_result.screenshot_path,
-                "image_analysis": image_analysis.model_dump()
-                if image_analysis
-                else None,
+                "image_analysis": (
+                    image_analysis.model_dump() if image_analysis else None
+                ),
             }
 
             self._log_trace(
