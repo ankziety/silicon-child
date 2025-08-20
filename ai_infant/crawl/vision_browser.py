@@ -8,7 +8,7 @@ import time
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import requests
 from pydantic import BaseModel, Field
@@ -42,7 +42,7 @@ class VisionBrowserAction(BaseModel):
 
     action_type: str  # click, type, scroll, navigate, wait, screenshot
     target_description: str
-    coordinates: Optional[Tuple[int, int]]
+    coordinates: Optional[tuple[int, int]]
     text_input: Optional[str]
     selector: Optional[str]
     confidence: float
@@ -58,9 +58,9 @@ class VisionBrowserSession(BaseModel):
     session_id: str
     start_time: datetime
     current_url: str
-    actions_performed: List[VisionBrowserAction]
-    screenshots_taken: List[str]
-    vision_analyses: List[VisionAnalysis]
+    actions_performed: list[VisionBrowserAction]
+    screenshots_taken: list[str]
+    vision_analyses: list[VisionAnalysis]
     user_goal: str
     status: str  # active, completed, failed
 
@@ -101,10 +101,10 @@ class VisionBrowser(Browser):
         self.current_session: Optional[VisionBrowserSession] = None
 
         # Action history for vision-based actions
-        self.vision_actions: List[VisionBrowserAction] = []
+        self.vision_actions: list[VisionBrowserAction] = []
 
         # Deliberation records for decisions about which actions to run
-        self.deliberations: List[Dict[str, Any]] = []
+        self.deliberations: list[dict[str, Any]] = []
 
         # Screenshot directory for vision analysis
         self.vision_screenshot_dir = Path("data/vision_screenshots")
@@ -274,7 +274,7 @@ class VisionBrowser(Browser):
                 error_message=None,
             )
 
-            result_record: Dict[str, Any] = {
+            result_record: dict[str, Any] = {
                 "timestamp": datetime.utcnow().isoformat(),
                 "action": vision_action.model_dump()
                 if hasattr(vision_action, "model_dump")
@@ -382,7 +382,8 @@ class VisionBrowser(Browser):
         self, user_goal: str, max_actions: int = 10
     ) -> VisionBrowserSession:
         """Automate browser interaction using vision model analysis."""
-        session_id = self.start_vision_session(user_goal)
+        # start a session (session id not needed locally here)
+        self.start_vision_session(user_goal)
 
         try:
             action_count = 0
@@ -402,7 +403,7 @@ class VisionBrowser(Browser):
 
                 # Ask the agent to consider available actions and choose one
                 chosen_action = None
-                decision_record: Optional[Dict[str, Any]] = None
+                decision_record: Optional[dict[str, Any]] = None
                 try:
                     chosen_action, decision_record = self.consider_actions(
                         recommended_actions, user_goal
@@ -806,7 +807,7 @@ Return the analysis in JSON format with the following structure:
             print(f"Local vision analysis failed: {e}")
             return None
 
-    def _parse_vision_response(self, analysis_data: Dict[str, Any]) -> VisionAnalysis:
+    def _parse_vision_response(self, analysis_data: dict[str, Any]) -> VisionAnalysis:
         """Parse vision model response into VisionAnalysis object."""
         try:
             # Convert interactive elements
@@ -857,7 +858,7 @@ Return the analysis in JSON format with the following structure:
             print(f"Error parsing vision response: {e}")
             return None
 
-    def _click_at_coordinates(self, coordinates: Tuple[int, int]) -> bool:
+    def _click_at_coordinates(self, coordinates: tuple[int, int]) -> bool:
         """Click at specific screen coordinates."""
         try:
             self.page.click(coordinates[0], coordinates[1])
@@ -867,8 +868,8 @@ Return the analysis in JSON format with the following structure:
             return False
 
     def consider_actions(
-        self, recommended_actions: List[VisionAction], user_goal: str
-    ) -> tuple[Optional[VisionAction], Dict[str, Any]]:
+        self, recommended_actions: list[VisionAction], user_goal: str
+    ) -> tuple[Optional[VisionAction], dict[str, Any]]:
         """Deliberate over recommended actions and return a chosen action plus a decision record.
 
         This function uses the AIResponseGenerator (LLM) to score or pick actions when available,
@@ -894,7 +895,7 @@ Return the analysis in JSON format with the following structure:
                 "instruction": 'Select the best action index to execute that most directly advances the user goal. Return a JSON object {"chosen_index": INT, "rationale": "text"}.',
             }
 
-            decision_record: Dict[str, Any] = {
+            decision_record: dict[str, Any] = {
                 "timestamp": datetime.utcnow().isoformat(),
                 "user_goal": user_goal,
                 "actions": actions_summary,
@@ -902,7 +903,7 @@ Return the analysis in JSON format with the following structure:
 
             # If we have an AI generator, ask it to pick; else, use heuristic
             chosen_action: Optional[VisionAction] = None
-            if self.ai_generator and self.ai_generator.llm_client:
+            if self.ai_generator and getattr(self, "aggregator", None):
                 # Use the direct response generator which tries available APIs
                 json_prompt = json.dumps(prompt)
                 # Use configured aggregator (no fallback)
@@ -947,15 +948,15 @@ Return the analysis in JSON format with the following structure:
 
     def _execute_action_with_retries(
         self, action: VisionAction, user_goal: str, max_retries: int = 3
-    ) -> tuple[bool, List[Dict[str, Any]]]:
+    ) -> tuple[bool, list[dict[str, Any]]]:
         """Execute a VisionAction with retries. On failure, allow the LLM to inspect the error and propose a fix up to max_retries times.
 
         Returns (success, attempt_records).
         """
-        attempt_records: List[Dict[str, Any]] = []
+        attempt_records: list[dict[str, Any]] = []
 
         for attempt in range(1, max_retries + 1):
-            attempt_info: Dict[str, Any] = {
+            attempt_info: dict[str, Any] = {
                 "attempt": attempt,
                 "action": {
                     "action_type": action.action_type,
