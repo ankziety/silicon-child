@@ -2,7 +2,7 @@
 
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -28,7 +28,7 @@ class ReportGenerator:
     ) -> str:
         """Log a job entry."""
         job_id = f"{job_type}-{int(time.time() * 1000)}"
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).isoformat()
 
         job_data = {
             "id": job_id,
@@ -47,7 +47,7 @@ class ReportGenerator:
 
     def _get_weekly_date_range(self) -> tuple[datetime, datetime]:
         """Get the date range for the current week (Monday to Sunday)."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         # Find the most recent Monday
         days_since_monday = now.weekday()
         week_start = now - timedelta(days=days_since_monday)
@@ -233,7 +233,7 @@ class ReportGenerator:
         # Log report generation start
         input_data = {
             "reports_dir": str(self.reports_dir),
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         self._log_job("report", "running", input_data)
@@ -318,7 +318,7 @@ class ReportGenerator:
         return f"""# AI-Infant Weekly Report - {report_date}
 
 **Report Period:** {week_start.strftime("%Y-%m-%d")} to {week_end.strftime("%Y-%m-%d")}
-**Generated:** {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}
+**Generated:** {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")}
 
 ## Key Metrics
 
