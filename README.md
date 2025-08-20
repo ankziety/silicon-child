@@ -1,6 +1,10 @@
-# AI-Infant
+# AI-Infant 🤖🧠
 
-Minimal, long-running research agent that ingests data, records provenance, learns incrementally, and reports progress.
+A sophisticated, long-running research agent that combines **adaptive reasoning**, **continuous learning**, and **vision-based web automation** to conduct intelligent research. The system ingests data from the web, records complete provenance, learns incrementally from its experiences, and provides comprehensive research reports.
+
+## Core Philosophy
+
+AI-Infant implements the concept of **"emergent curiosity"** - like how the human brain develops specialized neurons (e.g., the "Jennifer Aniston neuron") through natural learning experiences. The system doesn't have pre-programmed research topics but develops its own interests organically through research experiences.
 
 ## Quick Start
 
@@ -32,13 +36,34 @@ python -m ai_infant session --duration 15
 python -m ai_infant --help
 ```
 
-## Features
+## Key Features
 
-### Core Research Pipeline
-- **Data Ingestion**: Web crawling with robots.txt compliance
-- **Document Processing**: HTML/PDF parsing with anchored quotes
-- **Storage**: DuckDB + JSONL with deduplication
-- **Job Logging**: Complete audit trail of all operations
+### 🤔 Adaptive Reasoning Engine
+- **Human-like Research Process**: Shows AI's thinking process in real-time with detailed reasoning traces
+- **Knowledge Gap Identification**: Automatically identifies what it still needs to know
+- **Iterative Research**: Searches based on identified knowledge gaps, not just initial queries
+- **Transparent Decision Making**: Each thought includes confidence scores and evidence sources
+- **Working Memory**: Maintains context and builds upon previous findings
+
+### 🧠 Continuous Learning System
+- **Online Model Updates**: Model learns and improves during research sessions
+- **LLM Jury Evaluation**: Multi-model evaluation system for quality assessment
+- **Dataset Selection**: Intelligent filtering of high-quality learning examples
+- **LoRA Training**: Parameter-efficient fine-tuning with resume-safe checkpoints
+- **A/B Model Promotion**: Automated evaluation and promotion of improved model versions
+
+### 👁️ Vision-Based Browser Automation
+- **Visual Web Interaction**: Uses vision models (GPT-4V, Claude) to understand web pages visually
+- **Intelligent Navigation**: Makes decisions based on visual analysis of page layouts
+- **Goal-Oriented Automation**: Executes actions to achieve user-specified research goals
+- **Multi-Provider Support**: Compatible with OpenAI, Anthropic, and local vision models
+- **Action Confidence Scoring**: Only executes high-confidence automation actions
+
+### 🏗️ Modular Architecture
+- **Schema-Based Contracts**: Immutable data contracts (DocV1, TraceV1, JobV1)
+- **Component Separation**: Clean separation between data ingestion, processing, and learning
+- **Extensible Design**: Easy to add new vision providers, evaluation models, or learning algorithms
+- **Robust Error Handling**: Graceful degradation with comprehensive logging
 
 ## Running the System
 
@@ -92,12 +117,45 @@ Options:
 - **Specialized Jury**: Single model family (focused evaluation)
 - **Mixed Jury**: High-performance + affordable (balanced)
 
-## Architecture
+## Architecture Overview
 
-This project implements a two-layer architecture:
+AI-Infant implements a sophisticated layered architecture designed for reliability, extensibility, and research-grade operation:
 
-1. **Immutable Contracts (Schemas)**: DocV1, TraceV1, JobV1
-2. **Processing Pipeline**: Components that operate on validated data
+### 🏗️ System Layers
+
+1. **Schema Contracts (Foundation)**
+   - **DocV1**: Document ingestion and storage contract
+   - **TraceV1**: Execution trace logging for complete audit trails
+   - **JobV1**: Job orchestration and metadata tracking
+   - **Immutable Design**: Schema versions never change, only add new versions
+
+2. **Data Processing Pipeline**
+   - **Crawl Layer**: Browser automation and web data ingestion
+   - **Text Layer**: Content parsing, cleaning, and analysis
+   - **Learn Layer**: Continuous learning and model improvement
+   - **Plan Layer**: Research planning and policy execution
+
+3. **Core Orchestration**
+   - **Adaptive Loop**: Main research orchestration engine
+   - **Reasoning Engine**: Thought process management and knowledge gap identification
+   - **Store**: Centralized data persistence with DuckDB + JSONL
+
+### 🔄 Research Workflow
+
+1. **Question Analysis**: AI analyzes research questions and generates initial search queries
+2. **Web Exploration**: Vision-based browser automation explores relevant web content
+3. **Content Analysis**: Extracts facts, identifies knowledge gaps, forms hypotheses
+4. **Iterative Research**: Searches based on knowledge gaps in human-like research process
+5. **Learning & Adaptation**: Updates internal models with new knowledge
+6. **Conclusion Formation**: Synthesizes findings into coherent conclusions
+7. **Final Answer**: Generates comprehensive research reports
+
+### 🛡️ Quality Assurance
+
+- **LLM Jury Evaluation**: Multi-model assessment of research quality
+- **Confidence Scoring**: All decisions include uncertainty estimates
+- **Audit Trails**: Complete provenance tracking for all operations
+- **Error Recovery**: Robust error handling with graceful degradation
 
 ## Environment Setup
 
@@ -120,6 +178,35 @@ export COHERE_API_KEY="your_cohere_api_key"
 ## Development
 
 See `docs/ADR-0000.md` for detailed architecture decisions.
+
+## 🔬 Research Process & Learning
+
+### Human-Like Research Behavior
+
+AI-Infant mimics human research patterns:
+
+- **Shows Thinking**: Displays reasoning process in real-time logs
+- **Identifies Gaps**: Recognizes what it still needs to know
+- **Iterative Search**: Searches based on knowledge gaps, not just initial queries
+- **Forms Conclusions**: Synthesizes evidence into coherent conclusions
+- **Learns Continuously**: Model updates during research like human brain development
+
+### Emergent Curiosity
+
+The system develops genuine curiosity organically:
+- **No Pre-programmed Interests**: Doesn't have predetermined research topics
+- **Organic Development**: Interests emerge from research process itself
+- **Natural Specialization**: Like the Jennifer Aniston neuron, develops specialized knowledge areas
+- **Autonomous Decision Making**: Chooses research topics based on its own curiosity
+
+### Learning Examples
+
+During research, the system:
+1. **Analyzes Content**: Extracts key facts and insights from web content
+2. **Generates Hypotheses**: Forms testable hypotheses about the research topic
+3. **Identifies Gaps**: Finds missing information and unanswered questions
+4. **Updates Models**: Improves its internal models with new knowledge
+5. **Builds Confidence**: Assigns confidence scores to all findings
 
 ## Model Pricing (per 1K tokens)
 
