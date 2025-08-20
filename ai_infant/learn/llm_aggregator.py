@@ -89,8 +89,17 @@ class AggregatorManager:
     If enforce_no_fallback is True, initialization will raise if no adapters
     are configured.
     """
-    def __init__(self, preference: Optional[str] = None, enforce_no_fallback: bool = True):
+    def __init__(self, preference: Optional[str] = None, enforce_no_fallback: Optional[bool] = None):
+        """Initialize aggregator manager.
+
+        If `enforce_no_fallback` is not provided, derive default from `ENVIRONMENT` env var:
+        - production -> enforce_no_fallback = True
+        - development -> enforce_no_fallback = False
+        """
         self.preference = preference or os.getenv("AGGREGATOR_PREFERENCE", "")
+        if enforce_no_fallback is None:
+            env = os.getenv("ENVIRONMENT", "production").lower()
+            enforce_no_fallback = True if env == "production" else False
         self.adapters: List[LLMAdapter] = []
         # Build adapters according to preference order
         prefs = [p.strip().lower() for p in self.preference.split(",") if p.strip()]

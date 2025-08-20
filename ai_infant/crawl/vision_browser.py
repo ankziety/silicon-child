@@ -79,14 +79,8 @@ class VisionBrowser(Browser):
         # AI response generator with fallback support
         self.ai_generator = AIResponseGenerator(store)
 
-        # Aggregator manager: required (no fallback allowed)
-        try:
-            pref = os.getenv("AGGREGATOR_PREFERENCE", "llmz,openrouter")
-            self.aggregator = AggregatorManager(preference=pref, enforce_no_fallback=True)
-            print("LLM Aggregator initialized")
-        except Exception as e:
-            # Fail fast if aggregator is not configured since user requested no fallback
-            raise
+        # Aggregator should be injected externally; default to None
+        self.aggregator: Optional[AggregatorManager] = None
         
         # LLM Jury for evaluating actions
         try:
@@ -815,7 +809,8 @@ Return the analysis in JSON format with the following structure:
             if self.ai_generator and self.ai_generator.llm_client:
                 # Use the direct response generator which tries available APIs
                 json_prompt = json.dumps(prompt)
-                raw = self.ai_generator.generate_direct_response(json_prompt)
+                # Use configured aggregator (no fallback)
+                raw = self.aggregator.generate(json_prompt)
                 # Try to parse JSON out of the response
                 try:
                     parsed = json.loads(raw)
@@ -878,7 +873,7 @@ Return the analysis in JSON format with the following structure:
                         "instruction": "Propose a modified action to retry (change selector, use coordinates, or change action_type). Return JSON {\"action\": {\"action_type\":..., \"target_description\":..., \"coordinates\": [x,y]|null, \"text_input\": null}}"
                     }
 
-                    raw = self.ai_generator.generate_direct_response(json.dumps(repair_prompt))
+                    raw = self.aggregator.generate(json.dumps(repair_prompt))
                     attempt_info["llm_raw"] = raw
                     try:
                         parsed = json.loads(raw)
