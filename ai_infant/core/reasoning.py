@@ -132,18 +132,23 @@ class ReasoningEngine:
         print()
 
         # Store in database
-        self.store.store_trace({
-            "id": f"reasoning-{thought.id}",
-            "job_id": f"reasoning-{int(time.time() * 1000)}",
-            "component": "reasoning",
-            "operation": thought.thought_type,
-            "status": "completed",
-            "timestamp": thought.timestamp.isoformat() + "Z",
-            "duration_ms": 0,
-            "input": {"thought_type": thought.thought_type, "content": thought.content},
-            "output": {"thought_id": thought.id, "confidence": thought.confidence},
-            "metadata": {"reasoning_step": True},
-        })
+        self.store.store_trace(
+            {
+                "id": f"reasoning-{thought.id}",
+                "job_id": f"reasoning-{int(time.time() * 1000)}",
+                "component": "reasoning",
+                "operation": thought.thought_type,
+                "status": "completed",
+                "timestamp": thought.timestamp.isoformat() + "Z",
+                "duration_ms": 0,
+                "input": {
+                    "thought_type": thought.thought_type,
+                    "content": thought.content,
+                },
+                "output": {"thought_id": thought.id, "confidence": thought.confidence},
+                "metadata": {"reasoning_step": True},
+            }
+        )
 
     def analyze_content(self, content: str, source_url: str) -> str:
         """Analyze new content and form thoughts about it."""
@@ -775,7 +780,9 @@ class ReasoningEngine:
         return {
             "total_thoughts": len(self.thoughts),
             "thought_types": {
-                thought_type: len([t for t in self.thoughts if t.thought_type == thought_type])
+                thought_type: len(
+                    [t for t in self.thoughts if t.thought_type == thought_type]
+                )
                 for thought_type in {t.thought_type for t in self.thoughts}
             },
             "knowledge_gaps": {
