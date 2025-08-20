@@ -263,3 +263,12 @@ config/prod.json
 
 # JSONL data files (keep schemas, ignore data)
 data/*.jsonl
+
+# Checkpoint files
+adapters/*
+
+# Report files
+reports/*
+
+# Wandb
+wandb/*
