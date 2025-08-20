@@ -4,6 +4,7 @@ import json
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 import jsonschema
 import pytest
@@ -36,7 +37,8 @@ class TestResearchLoop:
     @pytest.fixture
     def research_loop(self, store: Store) -> ResearchLoop:
         """Create a research loop instance for testing."""
-        return ResearchLoop(store)
+        with patch("ai_infant.crawl.browser.sync_playwright"):
+            return ResearchLoop(store)
 
     @pytest.fixture
     def seed_questions(self) -> list[str]:

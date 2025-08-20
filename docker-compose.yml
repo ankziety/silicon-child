@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   ai-infant:
     build: .
@@ -13,5 +11,5 @@ services:
       - DISPLAY=:99
     env_file:
       - .env
-    command: python -m ai_infant --duration 10
+    command: python -m ai_infant --duration 15
     restart: unless-stopped

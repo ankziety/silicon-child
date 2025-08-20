@@ -5,15 +5,17 @@ model aggregators (LLMz, OpenRouter, etc.) according to environment
 preferences. It intentionally does NOT provide a local fallback when
 enforce_no_fallback=True.
 """
-import os
+
 import json
-from typing import Optional, List
+import os
+from typing import List, Optional
 
 import requests
 
 
 class LLMAdapter:
     """Base adapter interface."""
+
     def available(self) -> bool:
         raise NotImplementedError()
 
@@ -33,7 +35,10 @@ class LLMzAdapter(LLMAdapter):
         if not self.available():
             raise RuntimeError("LLMz adapter not configured")
 
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
         data = {"prompt": prompt}
         # Allow caller to add options
         data.update(kwargs.get("options", {}))
@@ -66,7 +71,10 @@ class OpenRouterAdapter(LLMAdapter):
         if not self.available():
             raise RuntimeError("OpenRouter adapter not configured")
 
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
         data = {"input": prompt}
         data.update(kwargs.get("options", {}))
 
@@ -89,7 +97,12 @@ class AggregatorManager:
     If enforce_no_fallback is True, initialization will raise if no adapters
     are configured.
     """
-    def __init__(self, preference: Optional[str] = None, enforce_no_fallback: Optional[bool] = None):
+
+    def __init__(
+        self,
+        preference: Optional[str] = None,
+        enforce_no_fallback: Optional[bool] = None,
+    ):
         """Initialize aggregator manager.
 
         If `enforce_no_fallback` is not provided, derive default from `ENVIRONMENT` env var:
@@ -126,12 +139,16 @@ class AggregatorManager:
                     self.adapters.append(adapter)
 
         if enforce_no_fallback and not self.adapters:
-            raise RuntimeError("No LLM aggregator adapters configured and fallback is disabled. Set AGGREGATOR_PREFERENCE and provider API keys.")
+            raise RuntimeError(
+                "No LLM aggregator adapters configured and fallback is disabled. Set AGGREGATOR_PREFERENCE and provider API keys."
+            )
 
     def is_available(self) -> bool:
         return len(self.adapters) > 0
 
-    def generate(self, prompt: str, hint: Optional[str] = None, timeout: int = 30) -> str:
+    def generate(
+        self, prompt: str, hint: Optional[str] = None, timeout: int = 30
+    ) -> str:
         """Generate text using the first available adapter in preference order.
 
         Raises RuntimeError if no adapters are available or all adapters fail.
@@ -147,5 +164,3 @@ class AggregatorManager:
                 continue
 
         raise RuntimeError(f"All aggregator adapters failed: {errors}")
-
-

@@ -63,8 +63,8 @@ class ResumeSafeTrainer:
         if torch.cuda.is_available():
             torch.cuda.manual_seed(seed)
 
-        # Setup signal handlers for graceful interruption
-        signal.signal(signal.SIGINT, self._signal_handler)
+        # Setup signal handler for graceful termination only.
+        # Do NOT override SIGINT so user Ctrl+C can interrupt immediately.
         signal.signal(signal.SIGTERM, self._signal_handler)
 
         self.interrupted = False

@@ -55,98 +55,111 @@ class ReportGenerator:
         week_end = week_start + timedelta(days=7)
         return week_start, week_end
 
-    def _calculate_tokens_per_day(self, week_start: datetime, week_end: datetime) -> Dict[str, float]:
+    def _calculate_tokens_per_day(
+        self, week_start: datetime, week_end: datetime
+    ) -> Dict[str, float]:
         """Calculate tokens per day from document content."""
         documents = self.store.get_documents()
-        
+
         # Filter documents within the week
         weekly_docs = []
         for doc in documents:
             try:
-                doc_timestamp = datetime.fromisoformat(doc["timestamp"].replace("Z", "+00:00"))
+                doc_timestamp = datetime.fromisoformat(
+                    doc["timestamp"].replace("Z", "+00:00")
+                )
                 if week_start <= doc_timestamp < week_end:
                     weekly_docs.append(doc)
             except (ValueError, TypeError):
                 # Skip documents with invalid timestamps
                 continue
-        
+
         # Calculate total tokens (rough estimate: 1 token ≈ 4 characters)
         total_tokens = sum(len(doc["content"]) // 4 for doc in weekly_docs)
         days_in_week = 7
-        
+
         return {
             "tokens_per_day": total_tokens / days_in_week if days_in_week > 0 else 0.0,
             "total_tokens": total_tokens,
-            "documents_processed": len(weekly_docs)
+            "documents_processed": len(weekly_docs),
         }
 
-    def _calculate_pages_per_day(self, week_start: datetime, week_end: datetime) -> Dict[str, float]:
+    def _calculate_pages_per_day(
+        self, week_start: datetime, week_end: datetime
+    ) -> Dict[str, float]:
         """Calculate pages per day from fetch jobs."""
         fetch_jobs = self.store.get_jobs(job_type="fetch")
-        
+
         # Filter jobs within the week
         weekly_fetches = []
         for job in fetch_jobs:
             try:
-                job_timestamp = datetime.fromisoformat(job["created_at"].replace("Z", "+00:00"))
-                if week_start <= job_timestamp < week_end and job["status"] == "completed":
+                job_timestamp = datetime.fromisoformat(
+                    job["created_at"].replace("Z", "+00:00")
+                )
+                if (
+                    week_start <= job_timestamp < week_end
+                    and job["status"] == "completed"
+                ):
                     weekly_fetches.append(job)
             except (ValueError, TypeError):
                 # Skip jobs with invalid timestamps
                 continue
-        
+
         days_in_week = 7
-        
+
         return {
-            "pages_per_day": len(weekly_fetches) / days_in_week if days_in_week > 0 else 0.0,
+            "pages_per_day": len(weekly_fetches) / days_in_week
+            if days_in_week > 0
+            else 0.0,
             "total_pages": len(weekly_fetches),
-            "successful_fetches": len(weekly_fetches)
+            "successful_fetches": len(weekly_fetches),
         }
 
     def _get_eval_score_delta(self) -> Dict[str, Any]:
         """Get evaluation score delta between last and current adapter."""
         # Get all eval jobs
         eval_jobs = self.store.get_jobs(job_type="eval")
-        
+
         if not eval_jobs:
             return {
                 "current_score": 0.0,
                 "previous_score": 0.0,
                 "delta": 0.0,
                 "current_adapter_id": None,
-                "previous_adapter_id": None
+                "previous_adapter_id": None,
             }
-        
+
         # Sort by creation time (newest first)
         eval_jobs.sort(key=lambda x: x["created_at"], reverse=True)
-        
+
         current_score = 0.0
         previous_score = 0.0
         current_adapter_id = None
         previous_adapter_id = None
-        
+
         # Find the most recent successful eval
         for job in eval_jobs:
             if job["status"] == "completed" and job["output"]:
                 current_score = job["output"].get("candidate_score", 0.0)
                 current_adapter_id = job["input"].get("model_path", "unknown")
                 break
-        
+
         # Find the second most recent successful eval
         for job in eval_jobs[1:]:
             if job["status"] == "completed" and job["output"]:
                 previous_score = job["output"].get("candidate_score", 0.0)
                 previous_adapter_id = job["input"].get("model_path", "unknown")
                 break
-        
+
         delta = current_score - previous_score
-        
+
         return {
             "current_score": current_score,
             "previous_score": previous_score,
             "delta": delta,
             "current_adapter_id": current_adapter_id,
-            "previous_adapter_id": previous_adapter_id
+            "previous_adapter_id": previous_adapter_id,
         }
 
     def _get_current_adapter_id(self) -> str:
@@ -154,7 +167,7 @@ class ReportGenerator:
         adapters_file = Path("data/adapters.json")
         if not adapters_file.exists():
             return "none"
-        
+
         try:
             with open(adapters_file) as f:
                 data = json.load(f)
@@ -169,19 +182,23 @@ class ReportGenerator:
     def _get_rollback_history(self) -> List[Dict[str, Any]]:
         """Get rollback history from promotion jobs."""
         promote_jobs = self.store.get_jobs(job_type="promote")
-        
+
         rollbacks = []
         for job in promote_jobs:
             if job["status"] == "completed" and job["output"]:
                 output = job["output"]
-                if output.get("promoted", False) and output.get("rollback_triggered", False):
-                    rollbacks.append({
-                        "timestamp": job["created_at"],
-                        "model_path": job["input"].get("model_path", "unknown"),
-                        "score": output.get("candidate_score", 0.0),
-                        "reason": output.get("rollback_reason", "unknown")
-                    })
-        
+                if output.get("promoted", False) and output.get(
+                    "rollback_triggered", False
+                ):
+                    rollbacks.append(
+                        {
+                            "timestamp": job["created_at"],
+                            "model_path": job["input"].get("model_path", "unknown"),
+                            "score": output.get("candidate_score", 0.0),
+                            "reason": output.get("rollback_reason", "unknown"),
+                        }
+                    )
+
         return rollbacks
 
     def _calculate_disk_usage(self) -> Dict[str, Any]:
@@ -189,24 +206,26 @@ class ReportGenerator:
         data_dir = Path("data")
         if not data_dir.exists():
             return {"total_bytes": 0, "files": []}
-        
+
         total_bytes = 0
         files = []
-        
+
         for file_path in data_dir.rglob("*"):
             if file_path.is_file():
                 file_size = file_path.stat().st_size
                 total_bytes += file_size
-                files.append({
-                    "path": str(file_path.relative_to(data_dir)),
-                    "size_bytes": file_size,
-                    "size_mb": file_size / (1024 * 1024)
-                })
-        
+                files.append(
+                    {
+                        "path": str(file_path.relative_to(data_dir)),
+                        "size_bytes": file_size,
+                        "size_mb": file_size / (1024 * 1024),
+                    }
+                )
+
         return {
             "total_bytes": total_bytes,
             "total_mb": total_bytes / (1024 * 1024),
-            "files": sorted(files, key=lambda x: x["size_bytes"], reverse=True)
+            "files": sorted(files, key=lambda x: x["size_bytes"], reverse=True),
         }
 
     def generate_report(self) -> str:
@@ -214,15 +233,15 @@ class ReportGenerator:
         # Log report generation start
         input_data = {
             "reports_dir": str(self.reports_dir),
-            "timestamp": datetime.utcnow().isoformat() + "Z"
+            "timestamp": datetime.utcnow().isoformat() + "Z",
         }
-        
+
         job_id = self._log_job("report", "running", input_data)
-        
+
         try:
             # Get date range for the week
             week_start, week_end = self._get_weekly_date_range()
-            
+
             # Calculate metrics
             tokens_metrics = self._calculate_tokens_per_day(week_start, week_end)
             pages_metrics = self._calculate_pages_per_day(week_start, week_end)
@@ -230,22 +249,28 @@ class ReportGenerator:
             current_adapter = self._get_current_adapter_id()
             rollback_history = self._get_rollback_history()
             disk_usage = self._calculate_disk_usage()
-            
+
             # Generate report content
             report_date = week_start.strftime("%Y-%m-%d")
             report_filename = f"{report_date}.md"
             report_path = self.reports_dir / report_filename
-            
+
             report_content = self._format_report(
-                report_date, week_start, week_end,
-                tokens_metrics, pages_metrics, eval_metrics,
-                current_adapter, rollback_history, disk_usage
+                report_date,
+                week_start,
+                week_end,
+                tokens_metrics,
+                pages_metrics,
+                eval_metrics,
+                current_adapter,
+                rollback_history,
+                disk_usage,
             )
-            
+
             # Write report to file
             with open(report_path, "w") as f:
                 f.write(report_content)
-            
+
             # Log successful completion
             output_data = {
                 "report_path": str(report_path),
@@ -258,22 +283,22 @@ class ReportGenerator:
                     "eval_delta": eval_metrics["delta"],
                     "current_adapter": current_adapter,
                     "rollback_count": len(rollback_history),
-                    "disk_usage_mb": disk_usage["total_mb"]
-                }
+                    "disk_usage_mb": disk_usage["total_mb"],
+                },
             }
-            
+
             self._log_job("report", "completed", input_data, output_data)
-            
+
             return str(report_path)
-            
+
         except Exception as e:
             # Log failure
             error_data = {
                 "type": "report_generation_error",
                 "message": str(e),
-                "stack": None
+                "stack": None,
             }
-            
+
             self._log_job("report", "failed", input_data, error_data=error_data)
             raise
 
@@ -287,31 +312,31 @@ class ReportGenerator:
         eval_metrics: Dict[str, Any],
         current_adapter: str,
         rollback_history: List[Dict[str, Any]],
-        disk_usage: Dict[str, Any]
+        disk_usage: Dict[str, Any],
     ) -> str:
         """Format the report content as Markdown."""
         return f"""# AI-Infant Weekly Report - {report_date}
 
-**Report Period:** {week_start.strftime('%Y-%m-%d')} to {week_end.strftime('%Y-%m-%d')}  
-**Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}
+**Report Period:** {week_start.strftime("%Y-%m-%d")} to {week_end.strftime("%Y-%m-%d")}  
+**Generated:** {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}
 
 ## Key Metrics
 
 ### Content Processing
-- **Tokens/Day:** {tokens_metrics['tokens_per_day']:.1f}
-- **Total Tokens:** {tokens_metrics['total_tokens']:,}
-- **Documents Processed:** {tokens_metrics['documents_processed']}
+- **Tokens/Day:** {tokens_metrics["tokens_per_day"]:.1f}
+- **Total Tokens:** {tokens_metrics["total_tokens"]:,}
+- **Documents Processed:** {tokens_metrics["documents_processed"]}
 
 ### Web Crawling
-- **Pages/Day:** {pages_metrics['pages_per_day']:.1f}
-- **Total Pages:** {pages_metrics['total_pages']}
-- **Successful Fetches:** {pages_metrics['successful_fetches']}
+- **Pages/Day:** {pages_metrics["pages_per_day"]:.1f}
+- **Total Pages:** {pages_metrics["total_pages"]}
+- **Successful Fetches:** {pages_metrics["successful_fetches"]}
 
 ### Model Evaluation
 - **Current Adapter:** `{current_adapter}`
-- **Current Score:** {eval_metrics['current_score']:.3f}
-- **Previous Score:** {eval_metrics['previous_score']:.3f}
-- **Score Delta:** {eval_metrics['delta']:+.3f}
+- **Current Score:** {eval_metrics["current_score"]:.3f}
+- **Previous Score:** {eval_metrics["previous_score"]:.3f}
+- **Score Delta:** {eval_metrics["delta"]:+.3f}
 
 ## Rollback History
 
@@ -319,7 +344,7 @@ class ReportGenerator:
 
 ## Disk Usage
 
-**Total:** {disk_usage['total_mb']:.1f} MB
+**Total:** {disk_usage["total_mb"]:.1f} MB
 
 ### Largest Files
 {self._format_disk_usage(disk_usage)}
@@ -338,15 +363,21 @@ class ReportGenerator:
         """Format rollback history for the report."""
         if not rollbacks:
             return "No rollbacks recorded this week."
-        
+
         lines = []
         for rollback in rollbacks:
             try:
-                timestamp = datetime.fromisoformat(rollback["timestamp"].replace("Z", "+00:00"))
-                lines.append(f"- **{timestamp.strftime('%Y-%m-%d %H:%M')}**: {rollback['model_path']} (score: {rollback['score']:.3f}) - {rollback['reason']}")
+                timestamp = datetime.fromisoformat(
+                    rollback["timestamp"].replace("Z", "+00:00")
+                )
+                lines.append(
+                    f"- **{timestamp.strftime('%Y-%m-%d %H:%M')}**: {rollback['model_path']} (score: {rollback['score']:.3f}) - {rollback['reason']}"
+                )
             except (ValueError, TypeError):
-                lines.append(f"- **Invalid timestamp**: {rollback['model_path']} (score: {rollback['score']:.3f}) - {rollback['reason']}")
-        
+                lines.append(
+                    f"- **Invalid timestamp**: {rollback['model_path']} (score: {rollback['score']:.3f}) - {rollback['reason']}"
+                )
+
         return "\n".join(lines)
 
     def _format_disk_usage(self, disk_usage: Dict[str, Any]) -> str:
@@ -354,7 +385,7 @@ class ReportGenerator:
         lines = []
         for file_info in disk_usage["files"][:10]:  # Top 10 files
             lines.append(f"- `{file_info['path']}`: {file_info['size_mb']:.1f} MB")
-        
+
         return "\n".join(lines)
 
     def _get_record_counts(self) -> str:
@@ -362,7 +393,7 @@ class ReportGenerator:
         jobs = self.store.get_jobs()
         traces = self.store.get_traces()
         documents = self.store.get_documents()
-        
+
         return f"Jobs: {len(jobs)}, Traces: {len(traces)}, Documents: {len(documents)}"
 
     def _get_last_activity(self) -> str:
@@ -370,11 +401,13 @@ class ReportGenerator:
         jobs = self.store.get_jobs()
         if not jobs:
             return "No activity recorded"
-        
+
         # Find the most recent job
         latest_job = max(jobs, key=lambda x: x["created_at"])
         try:
-            timestamp = datetime.fromisoformat(latest_job["created_at"].replace("Z", "+00:00"))
+            timestamp = datetime.fromisoformat(
+                latest_job["created_at"].replace("Z", "+00:00")
+            )
             return timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")
         except (ValueError, TypeError):
             return "Invalid timestamp format"
@@ -383,7 +416,7 @@ class ReportGenerator:
 def main():
     """Main entry point for report generation."""
     store = Store()
-    
+
     try:
         generator = ReportGenerator(store)
         report_path = generator.generate_report()

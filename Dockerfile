@@ -1,16 +1,7 @@
-FROM python:3.11-slim
+FROM mcr.microsoft.com/playwright/python:v1.54.0-jammy
 
 # Set working directory
 WORKDIR /app
-
-# Install system dependencies for Playwright
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    ca-certificates \
-    procps \
-    libxss1 \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
 COPY pyproject.toml .
@@ -18,9 +9,7 @@ COPY pyproject.toml .
 # Install Python dependencies
 RUN pip install --no-cache-dir -e .
 
-# Install Playwright browsers
-RUN playwright install chromium
-RUN playwright install-deps chromium
+# Playwright browsers are already installed in the base image
 
 # Copy application code
 COPY . .
