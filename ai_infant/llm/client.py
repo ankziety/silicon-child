@@ -96,7 +96,6 @@ def make_llm_client(provider: str = "openai", **opts) -> Callable[[str], str]:
                     resp = openrouter_module.ChatCompletion.create(
                         model=model,
                         messages=[{"role": "user", "content": prompt}],
-
                         temperature=0.2,
                     )
                     # Newer SDKs return .choices[0].message.content

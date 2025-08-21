@@ -272,3 +272,11 @@ reports/*
 
 # Wandb
 wandb/*
+docs/MODULES.md
+AGENT_ORCHESTRATION.md
+.gitignore
+AGENT_TASKS.md
+.gitignore
+AGENT.md
+AGENT_REVIEW.md
+TASK-016-notes.md
