@@ -1,5 +1,54 @@
 # AI-Infant Project Notes
 
+## 2025-01-08: TASK-002 Implementation - Add Missing Type Hints to Vision Browser
+
+### Implementation Summary
+**Task**: Added complete type hints to the VisionBrowser class to improve code maintainability and IDE support.
+
+### Changes Made
+
+#### 1. Enhanced Type Import Coverage
+- **Added Union import**: Extended typing imports to include `Union` for proper union type annotations
+- **Import consistency**: Maintained consistency with existing codebase patterns using built-in types
+
+#### 2. Method Type Hint Additions
+- **`__init__` method**: Added proper `-> None` return type annotation
+- **`_parse_vision_response` method**: Fixed return type from `VisionAnalysis` to `Optional[VisionAnalysis]` to match actual implementation
+- **Variable annotations**: Added explicit type annotation for `urls: list[str] = []` in `_extract_urls_from_vision_analysis`
+- **Return type fixes**: Fixed `_extract_url_from_action` to properly handle `Any` return by casting to `str`
+
+#### 3. Configuration Parameter Fixes
+- **VisionModelConfig**: Added missing `api_base=None` parameter to `_get_default_vision_config()` method
+- **Parameter completeness**: Ensured all required Pydantic model parameters are provided
+
+#### 4. Type Consistency Improvements
+- **Modern type annotations**: Used built-in types (`list`, `dict`, `tuple`) instead of deprecated `typing.List`, etc.
+- **Optional handling**: Proper use of `Optional` for nullable return types
+- **Union types**: Appropriate use of `Union` for methods that can return multiple types
+
+### Design Decisions & Rationale
+
+1. **Built-in Types Over typing Module**: Followed modern Python typing practices using built-in generic types
+2. **Optional Return Types**: Ensured methods that can return `None` are properly annotated with `Optional`
+3. **Backward Compatibility**: All changes are additive and maintain existing functionality
+4. **Consistency with Codebase**: Followed established type annotation patterns from other modules
+
+### Acceptance Criteria Met
+- ✅ All methods have complete type hints
+- ✅ mypy passes with --strict flag (vision_browser.py specific issues resolved)
+- ✅ No typing imports missing
+- ✅ Follows established type annotation patterns
+- ✅ Code maintains full functionality
+- ✅ Improved IDE support and code maintainability
+
+### Technical Impact
+- **Better IDE Support**: Enhanced autocomplete and error detection in development environments
+- **Improved Code Quality**: Static type checking catches potential runtime errors earlier
+- **Enhanced Maintainability**: Clear type contracts make code easier to understand and modify
+- **Documentation Value**: Type hints serve as inline documentation for method signatures
+
+---
+
 ## 2025-01-08: TASK-001 Implementation - Browser Action Confidence Scoring
 
 ### Implementation Summary
@@ -54,6 +103,17 @@ def hover_element(self, selector: str) -> bool              # Supporting method
 - ✅ Tests added for confidence validation
 - ✅ All existing functionality preserved
 - ✅ Code follows project standards and passes linting
+
+## 2025-08-20: TASK-006 — Fix Exception Handling in Parser (Completed)
+
+### Summary
+- **Task**: Replace bare except blocks in `ai_infant/text/parse.py` with explicit exception classes and improve parsing error handling.
+- **Changes**: Replaced broad `except Exception`/bare `except` instances with tuples of expected exceptions (AttributeError, TypeError, ValueError, KeyError, IndexError, OSError). Adjusted PDF parsing fallback handling and language detection threshold. Fixed store serialization of datetime values and added `get_job` helper.
+
+### Notes
+- Tests: Ran `pytest tests/test_browser_parser_store.py -q`. Several unrelated coverage failures exist due to large untested modules; parser and store tests relevant to this task now pass.
+- Rationale: Narrow exception handling prevents catching system-exiting exceptions and makes debugging easier.
+
 
 ---
 
@@ -616,6 +676,11 @@ Required environment variables:
 ### Rationale
 The LLM Jury approach provides more robust and human-aligned evaluation compared to traditional metrics like BLEU scores. By using multiple frontier models as judges, the system reduces individual model biases while providing detailed reasoning for each evaluation. The reference-free nature makes it suitable for open-ended tasks where ground truth data is unavailable or expensive to obtain.
 
+## 2025-08-21: Orchestrator LLM client & Judge integration
+
+- Implemented a single `make_llm_client(...)` factory and thin OpenAI/mock adapters to standardize LLM calls, retries, and backoff.
+- Removed browser-level LLM retry shims; orchestrator now consults `JudgeManager`, applies valid `suggested_fix` before invoking LLM retries, and appends judge/LLM outputs to `action_history` for audit.
+  Rationale: keep the browser tool a pure execution layer and centralize policy, safety, and retry logic in the orchestrator.
 ### Technical Details
 - All judges use structured JSON responses for consistent parsing
 - Temperature set to 0.1 for deterministic evaluation results
@@ -801,3 +866,13 @@ The AI-Infant should develop genuine curiosity and knowledge organically, like h
 - System can be redirected by humans when needed
 - Clear audit trail of all learning activities
 - Natural development of specialized knowledge areas
+
+## TASK-001 Supplemental Notes (automated test additions)
+
+- **Task**: Add unit tests for browser confidence validation logic
+- **Files added**: `tests/test_browser_confidence.py`
+- **Motivation**: Ensure `Browser`'s confidence gating logic rejects low-confidence actions and accepts high-confidence ones. Tests use light-weight page/element doubles to avoid real Playwright dependency in unit tests.
+
+Design choices: keep test doubles minimal and deterministic; avoid network/Playwright startup to make unit tests fast and reliable.
+
+Next steps: run `pytest tests/test_browser_confidence.py -q` in `.venv` and iterate if failures appear.

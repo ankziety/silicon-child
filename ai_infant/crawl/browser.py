@@ -1,6 +1,7 @@
 """Browser module for fetching web content with real browser capabilities and interactive actions."""
 
 import hashlib
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -96,49 +97,27 @@ class Browser:
         # Confidence threshold for action execution
         self.confidence_threshold = 0.7
 
+        # Internal flag to suppress duplicate logging when execute_action
+        # delegates to lower-level methods which also log actions.
+        self._suppress_action_logging = False
+
+        # Prepare lazy browser initialization primitives; do not start Playwright
+        # here to avoid asyncio loop conflicts in test runners. Actual browser
+        # will be started on first real operation via _ensure_browser_started().
         self._init_browser()
 
     def _init_browser(self):
-        """Initialize Playwright browser."""
-        try:
-            self.playwright = sync_playwright().start()
+        """Prepare lazy initialization primitives without starting Playwright."""
+        # Playwright will be started lazily in a background thread when needed.
+        self.playwright = None
+        self.browser = None
+        self.page = None
 
-            # Launch browser with visual capabilities
-            self.browser = self.playwright.chromium.launch(
-                headless=self.headless,
-                args=[
-                    "--no-sandbox",
-                    "--disable-dev-shm-usage",
-                    "--disable-web-security",
-                    "--disable-features=VizDisplayCompositor",
-                    "--user-agent=" + self.user_agent,
-                ],
-            )
-
-            # Create new page with large viewport for better screenshots
-            self.page = self.browser.new_page(
-                viewport={"width": 1920, "height": 1080}, user_agent=self.user_agent
-            )
-
-            # Set extra headers
-            self.page.set_extra_http_headers(
-                {
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.5",
-                    "Accept-Encoding": "gzip, deflate",
-                    "DNT": "1",
-                    "Connection": "keep-alive",
-                    "Upgrade-Insecure-Requests": "1",
-                }
-            )
-
-            # Set up event listeners for better debugging
-            self.page.on("console", lambda msg: print(f"Browser Console: {msg.text}"))
-            self.page.on("pageerror", lambda err: print(f"Browser Error: {err}"))
-
-        except Exception as e:
-            print(f"Failed to initialize browser: {e}")
-            raise
+        # Threading primitives for lazy start
+        self._start_lock = threading.Lock()
+        self._init_event = threading.Event()
+        self._playwright_thread: Optional[threading.Thread] = None
+        self._init_exception: Optional[BaseException] = None
 
     def _get_robots_parser(self, url: str) -> urllib.robotparser.RobotFileParser:
         """Get or create robots.txt parser for a domain."""
@@ -171,6 +150,79 @@ class Browser:
 
         return self.robots_cache[domain]
 
+    def _start_playwright_thread(self) -> None:
+        """Start Playwright in a dedicated background thread to avoid
+        asyncio loop conflicts with the test runner.
+
+        This method is intended to be run once inside a thread. It will set
+        `self.page`, `self.browser`, and `self.playwright` on success and
+        signal `self._init_event`. Any exception is captured and also
+        signaled to the waiting thread.
+        """
+        try:
+            pw = sync_playwright().start()
+            browser = pw.chromium.launch(
+                headless=self.headless,
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-web-security",
+                    "--disable-features=VizDisplayCompositor",
+                    "--user-agent=" + self.user_agent,
+                ],
+            )
+            page = browser.new_page(
+                viewport={"width": 1920, "height": 1080}, user_agent=self.user_agent
+            )
+
+            # Best-effort headers/event listeners
+            try:
+                page.set_extra_http_headers(
+                    {
+                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                        "Accept-Language": "en-US,en;q=0.5",
+                    }
+                )
+            except Exception:
+                pass
+
+            self.playwright = pw
+            self.browser = browser
+            self.page = page
+        except BaseException as e:
+            # Store exception for the waiting thread to inspect
+            self._init_exception = e
+        finally:
+            self._init_event.set()
+
+    def _ensure_browser_started(self, timeout: float = 5.0) -> None:
+        """Ensure the Playwright browser has been started. This will kick off
+        the background thread on first call and wait for initialization to
+        complete or timeout.
+        """
+        # Fast path
+        if self.page is not None:
+            return
+
+        with self._start_lock:
+            if self.page is not None:
+                return
+
+            # Start the background thread
+            self._init_event.clear()
+            self._playwright_thread = threading.Thread(
+                target=self._start_playwright_thread, daemon=True
+            )
+            self._playwright_thread.start()
+
+        # Wait for initialization
+        initialized = self._init_event.wait(timeout=timeout)
+        if not initialized:
+            raise RuntimeError("Timed out starting Playwright browser")
+        if self._init_exception:
+            # Reraise the captured initialization exception
+            raise self._init_exception
+
     def _can_fetch(self, url: str) -> bool:
         """Check if URL can be fetched according to robots.txt."""
         parser = self._get_robots_parser(url)
@@ -187,8 +239,16 @@ class Browser:
     def _take_screenshot(self, url: str) -> Optional[str]:
         """Take a screenshot of the current page."""
         try:
+            # Ensure browser is available
+            if self.page is None:
+                self._ensure_browser_started()
+
             # Wait for page to load completely
-            self.page.wait_for_load_state("networkidle", timeout=10000)
+            try:
+                self.page.wait_for_load_state("networkidle", timeout=10000)
+            except Exception:
+                # Some pages may not support this
+                pass
 
             # Generate screenshot filename
             timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -208,6 +268,9 @@ class Browser:
     def _extract_page_metadata(self) -> tuple[Optional[str], Optional[str]]:
         """Extract page title and description."""
         try:
+            if self.page is None:
+                self._ensure_browser_started()
+
             title = self.page.title()
 
             # Try to get meta description
@@ -229,6 +292,9 @@ class Browser:
         elements = []
 
         try:
+            if self.page is None:
+                self._ensure_browser_started()
+
             # Wait for page to be ready
             self.page.wait_for_load_state("domcontentloaded", timeout=10000)
 
@@ -409,6 +475,9 @@ class Browser:
     def get_page_state(self) -> PageState:
         """Get the current state of the page including all interactive elements."""
         try:
+            if self.page is None:
+                self._ensure_browser_started()
+
             # Wait for page to be ready
             self.page.wait_for_load_state("domcontentloaded", timeout=10000)
 
@@ -477,6 +546,8 @@ class Browser:
             bool: True if element was clicked successfully
         """
         try:
+            if self.page is None:
+                self._ensure_browser_started()
             # Validate confidence if provided
             if confidence is not None and confidence < self.confidence_threshold:
                 print(
@@ -496,15 +567,16 @@ class Browser:
                 self.action_history.append(action_data)
                 return False
 
-            # Log action
-            action_data = {
-                "action": "click",
-                "selector": selector,
-                "confidence": confidence,
-                "timestamp": datetime.utcnow().isoformat(),
-                "url": self.page.url,
-            }
-            self.action_history.append(action_data)
+            # Log action unless suppressed by execute_action
+            if not getattr(self, "_suppress_action_logging", False):
+                action_data = {
+                    "action": "click",
+                    "selector": selector,
+                    "confidence": confidence,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "url": self.page.url,
+                }
+                self.action_history.append(action_data)
 
             # Wait for element to be visible and clickable
             element = self.page.wait_for_selector(selector, timeout=10000)
@@ -547,6 +619,8 @@ class Browser:
             bool: True if at least one field was filled successfully
         """
         try:
+            if self.page is None:
+                self._ensure_browser_started()
             # Validate confidence if provided
             if confidence is not None and confidence < self.confidence_threshold:
                 print(
@@ -566,15 +640,16 @@ class Browser:
                 self.action_history.append(action_data)
                 return False
 
-            # Log action
-            action_data = {
-                "action": "fill_form",
-                "form_data": form_data,
-                "confidence": confidence,
-                "timestamp": datetime.utcnow().isoformat(),
-                "url": self.page.url,
-            }
-            self.action_history.append(action_data)
+            # Log action unless suppressed by execute_action
+            if not getattr(self, "_suppress_action_logging", False):
+                action_data = {
+                    "action": "fill_form",
+                    "form_data": form_data,
+                    "confidence": confidence,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "url": self.page.url,
+                }
+                self.action_history.append(action_data)
 
             success_count = 0
 
@@ -624,6 +699,8 @@ class Browser:
     def navigate_to(self, url: str) -> bool:
         """Navigate to a URL."""
         try:
+            if self.page is None:
+                self._ensure_browser_started()
             # Log action
             action_data = {
                 "action": "navigate",
@@ -666,6 +743,9 @@ class Browser:
     def wait_for_element(self, selector: str, timeout: int = 10000) -> bool:
         """Wait for an element to appear on the page."""
         try:
+            if self.page is None:
+                self._ensure_browser_started()
+
             self.page.wait_for_selector(selector, timeout=timeout)
             print(f"Element appeared: {selector}")
             return True
@@ -676,6 +756,8 @@ class Browser:
     def select_option(self, selector: str, value: str) -> bool:
         """Select an option from a dropdown/select element."""
         try:
+            if self.page is None:
+                self._ensure_browser_started()
             element = self.page.query_selector(selector)
             if element:
                 element.select_option(value)
@@ -691,6 +773,8 @@ class Browser:
     def hover_element(self, selector: str) -> bool:
         """Hover over an element on the page."""
         try:
+            if self.page is None:
+                self._ensure_browser_started()
             element = self.page.query_selector(selector)
             if element:
                 element.hover()
@@ -706,6 +790,9 @@ class Browser:
     def execute_javascript(self, script: str) -> Any:
         """Execute JavaScript code on the page."""
         try:
+            if self.page is None:
+                self._ensure_browser_started()
+
             result = self.page.evaluate(script)
             print(f"Executed JavaScript: {script[:50]}...")
             return result
@@ -716,6 +803,9 @@ class Browser:
     def get_element_text(self, selector: str) -> Optional[str]:
         """Get the text content of an element."""
         try:
+            if self.page is None:
+                self._ensure_browser_started()
+
             element = self.page.query_selector(selector)
             if element:
                 return element.text_content()
@@ -806,45 +896,75 @@ class Browser:
             }
             self.action_history.append(action_data)
 
-            # Execute action based on type
-            if action_type == "click":
-                return self.click_element(selector)
-            elif action_type == "fill":
-                value = kwargs.get("value", "")
-                if value:
-                    # For fill action, we need to find the field name from the selector
-                    # This is a simplified approach - in practice you'd want more sophisticated field detection
-                    field_name = (
-                        selector.replace("#", "")
-                        .replace(".", "")
-                        .replace("[", "")
-                        .replace("]", "")
-                    )
-                    return self.fill_form({field_name: value})
+            # Execute action based on type. Suppress underlying method logging
+            # to avoid duplicate entries in action_history since execute_action
+            # already logs the action.
+            self._suppress_action_logging = True
+            try:
+                if action_type == "click":
+                    return self.click_element(selector, confidence=confidence)
+                elif action_type == "fill":
+                    value = kwargs.get("value", "")
+                    if value:
+                        # For fill action, we need to find the field name from the selector
+                        # This is a simplified approach - in practice you'd want more sophisticated field detection
+                        field_name = (
+                            selector.replace("#", "")
+                            .replace(".", "")
+                            .replace("[", "")
+                            .replace("]", "")
+                        )
+                        return self.fill_form(
+                            {field_name: value}, confidence=confidence
+                        )
+                    else:
+                        print("Fill action requires 'value' parameter")
+                        return False
+                elif action_type == "select":
+                    value = kwargs.get("value", "")
+                    if value:
+                        return self.select_option(selector, value)
+                    else:
+                        print("Select action requires 'value' parameter")
+                        return False
+                elif action_type == "navigate":
+                    # For navigate, selector is actually the URL
+                    return self.navigate_to(selector)
+                elif action_type == "hover":
+                    return self.hover_element(selector)
+                elif action_type == "scroll":
+                    return self.scroll_to_element(selector)
+                elif action_type == "wait":
+                    timeout = kwargs.get("timeout", 10000)
+                    return self.wait_for_element(selector, timeout)
                 else:
-                    print("Fill action requires 'value' parameter")
+                    print(f"Unknown action type: {action_type}")
                     return False
-            elif action_type == "select":
-                value = kwargs.get("value", "")
-                if value:
-                    return self.select_option(selector, value)
-                else:
-                    print("Select action requires 'value' parameter")
-                    return False
-            elif action_type == "hover":
-                return self.hover_element(selector)
-            elif action_type == "scroll":
-                return self.scroll_to_element(selector)
-            elif action_type == "wait":
-                timeout = kwargs.get("timeout", 10000)
-                return self.wait_for_element(selector, timeout)
-            else:
-                print(f"Unknown action type: {action_type}")
-                return False
+            finally:
+                self._suppress_action_logging = False
 
         except Exception as e:
             print(f"Error executing action {action_type} on {selector}: {e}")
+            # Ensure suppression flag is cleared on error
+            self._suppress_action_logging = False
             return False
+
+    def execute_action_struct(
+        self, action_type: str, selector: str, confidence: float, **kwargs
+    ) -> dict:
+        """Execute an action and return a structured result dict.
+
+        Returns:
+            dict with at least 'ok' (bool). On failure includes 'reason' and 'details'.
+        """
+        ok = self.execute_action(action_type, selector, confidence, **kwargs)
+        if ok:
+            return {"ok": True, "result": {}}
+
+        # Find the most recent action history entry for context
+        last = self.action_history[-1] if self.action_history else {}
+        reason = last.get("reason", "low_confidence")
+        return {"ok": False, "reason": reason, "details": last}
 
     def set_confidence_threshold(self, threshold: float) -> None:
         """Set the confidence threshold for action execution.
