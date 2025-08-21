@@ -1,6 +1,7 @@
 """Browser module for fetching web content with real browser capabilities and interactive actions."""
 
 import hashlib
+import random
 import threading
 import time
 import urllib.parse
@@ -105,6 +106,18 @@ class Browser:
         # here to avoid asyncio loop conflicts in test runners. Actual browser
         # will be started on first real operation via _ensure_browser_started().
         self._init_browser()
+
+        # Optional tracing identifiers to link actions to higher-level runs
+        self.trace_id: Optional[str] = None
+        self.agent_id: Optional[str] = None
+
+        # Action logging controls (opt-in sampling and rate limiting)
+        # sampling rate = fraction [0.0, 1.0] of logs to persist to Store
+        self.action_log_sample_rate: float = 1.0
+        # rate limit for stored action logs (max logs per minute). None means unlimited
+        self.action_log_rate_limit: Optional[int] = None
+        self._action_log_window_start: float = time.time()
+        self._action_log_count_window: int = 0
 
     def _init_browser(self):
         """Prepare lazy initialization primitives without starting Playwright."""
@@ -874,7 +887,7 @@ class Browser:
                 )
                 print(f"Action: {action_type} on selector: {selector}")
 
-                # Log skipped action
+                # Log skipped action to history and Store
                 action_data = {
                     "action": action_type,
                     "selector": selector,
@@ -884,6 +897,19 @@ class Browser:
                     "url": self.page.url if self.page else "",
                 }
                 self.action_history.append(action_data)
+                # Record job for auditability
+                try:
+                    self._log_job(
+                        "action",
+                        action_data,
+                        error_data={
+                            "type": "low_confidence",
+                            "message": "Action rejected due to low confidence",
+                        },
+                    )
+                except Exception:
+                    # Don't surface logging failures to callers
+                    pass
                 return False
 
             # Log action
@@ -896,52 +922,83 @@ class Browser:
             }
             self.action_history.append(action_data)
 
+            # Pre-check element availability for element-targeting actions
+            element_targeting_actions = {"click", "hover", "scroll", "select", "fill"}
+            if action_type in element_targeting_actions and self.page is not None:
+                try:
+                    found = self.page.wait_for_selector(selector, timeout=5000)
+                except Exception:
+                    found = None
+
+                if not found:
+                    # Update last logged action with reason
+                    if self.action_history:
+                        self.action_history[-1]["reason"] = "not_found"
+                    print(f"Element not found for action {action_type}: {selector}")
+                    return False
+
             # Execute action based on type. Suppress underlying method logging
             # to avoid duplicate entries in action_history since execute_action
             # already logs the action.
             self._suppress_action_logging = True
+            ok = False
             try:
                 if action_type == "click":
-                    return self.click_element(selector, confidence=confidence)
+                    ok = self.click_element(selector)
                 elif action_type == "fill":
                     value = kwargs.get("value", "")
                     if value:
-                        # For fill action, we need to find the field name from the selector
-                        # This is a simplified approach - in practice you'd want more sophisticated field detection
                         field_name = (
                             selector.replace("#", "")
                             .replace(".", "")
                             .replace("[", "")
                             .replace("]", "")
                         )
-                        return self.fill_form(
-                            {field_name: value}, confidence=confidence
-                        )
+                        ok = self.fill_form({field_name: value})
                     else:
                         print("Fill action requires 'value' parameter")
-                        return False
+                        ok = False
                 elif action_type == "select":
                     value = kwargs.get("value", "")
                     if value:
-                        return self.select_option(selector, value)
+                        ok = self.select_option(selector, value)
                     else:
                         print("Select action requires 'value' parameter")
-                        return False
+                        ok = False
                 elif action_type == "navigate":
                     # For navigate, selector is actually the URL
-                    return self.navigate_to(selector)
+                    ok = self.navigate_to(selector)
                 elif action_type == "hover":
-                    return self.hover_element(selector)
+                    ok = self.hover_element(selector)
                 elif action_type == "scroll":
-                    return self.scroll_to_element(selector)
+                    ok = self.scroll_to_element(selector)
                 elif action_type == "wait":
                     timeout = kwargs.get("timeout", 10000)
-                    return self.wait_for_element(selector, timeout)
+                    ok = self.wait_for_element(selector, timeout)
                 else:
                     print(f"Unknown action type: {action_type}")
-                    return False
+                    ok = False
             finally:
                 self._suppress_action_logging = False
+
+            # Record job for auditability
+            try:
+                if ok:
+                    self._log_job("action", action_data, output_data={"ok": True})
+                else:
+                    self._log_job(
+                        "action",
+                        action_data,
+                        error_data={
+                            "type": "execution_failed",
+                            "message": "Underlying action returned False",
+                        },
+                    )
+            except Exception:
+                # Don't let logging failures affect action outcome
+                pass
+
+            return ok
 
         except Exception as e:
             print(f"Error executing action {action_type} on {selector}: {e}")
@@ -1019,7 +1076,56 @@ class Browser:
             },
         }
 
-        self.store.store_job(job_data)
+        # Attach tracing identifiers if available
+        if self.trace_id:
+            job_data["metadata"]["trace_id"] = self.trace_id
+        if self.agent_id:
+            job_data["metadata"]["agent_id"] = self.agent_id
+
+        # Decide whether to persist this job to Store based on sampling and rate limits
+        persist_to_store = True
+
+        # Sampling
+        try:
+            if not (0.0 <= self.action_log_sample_rate <= 1.0):
+                # sanitize invalid config
+                self.action_log_sample_rate = 1.0
+        except Exception:
+            self.action_log_sample_rate = 1.0
+
+        if self.action_log_sample_rate < 1.0:
+            try:
+                if random.random() >= self.action_log_sample_rate:
+                    persist_to_store = False
+            except Exception:
+                # If random fails for any reason, default to persisting
+                persist_to_store = True
+
+        # Rate limiting (per-minute window)
+        if self.action_log_rate_limit is not None and persist_to_store:
+            now = time.time()
+            # reset window if older than 60s
+            if now - self._action_log_window_start >= 60.0:
+                self._action_log_window_start = now
+                self._action_log_count_window = 0
+
+            if self._action_log_count_window >= self.action_log_rate_limit:
+                persist_to_store = False
+
+        # Persist job if allowed
+        if persist_to_store:
+            try:
+                self.store.store_job(job_data)
+                # increment rate limit counter only when we actually stored
+                if self.action_log_rate_limit is not None:
+                    self._action_log_count_window += 1
+            except Exception:
+                # Swallow store failures to avoid affecting control flow
+                pass
+        else:
+            # For observability, mark that the job was intentionally not persisted
+            job_data["metadata"]["persisted"] = False
+
         return job_id
 
     def fetch(self, url: str) -> Optional[FetchResult]:
