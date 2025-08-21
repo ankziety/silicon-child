@@ -279,4 +279,5 @@ AGENT_TASKS.md
 .gitignore
 AGENT.md
 AGENT_REVIEW.md
-TASK-016-notes.md
+
+TASK-[0-9][0-9][0-9]-notes.md
