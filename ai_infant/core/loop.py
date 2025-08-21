@@ -4,11 +4,11 @@ import hashlib
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from pydantic import BaseModel
 
-from ..crawl.browser import Browser
+from ..crawl import create_browser_tool
 from ..plan.policy import ActionState, ActionType, Policy, ResearchState
 from ..text.image_analysis import ImageAnalyzer
 from ..text.parse import Parser
@@ -44,10 +44,21 @@ class Answer(BaseModel):
 class ResearchLoop:
     """Core research loop that orchestrates the entire process."""
 
-    def __init__(self, store: Any, headless: bool = False):
+    def __init__(
+        self,
+        store: Any,
+        headless: bool = False,
+        llm_client: Optional[Callable[[str], str]] = None,
+    ):
         """Initialize research loop with storage."""
         self.store = store
-        self.browser = Browser(store, headless=headless)
+        # Use the browser tool facade for better testability and lazy init
+        self.browser = create_browser_tool(store, headless=headless)
+        # Orchestration should be performed by a dedicated orchestrator; do not
+        # register LLM callbacks directly on the browser tool here. Higher-level
+        # components should use ai_infant.agents.llm_orchestrator.perform_action_with_llm
+        # if they want LLM-driven retries. We keep llm_client parameter for
+        # backward compatibility but do not act on it here.
         self.parser = Parser(store)
         self.policy = Policy(store)
         self.image_analyzer = ImageAnalyzer(store)

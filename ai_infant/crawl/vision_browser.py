@@ -8,7 +8,7 @@ import time
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import requests
 from pydantic import BaseModel, Field
@@ -74,7 +74,7 @@ class VisionBrowser(Browser):
         vision_config: Optional[VisionModelConfig] = None,
         user_agent: str = "AI-Infant/0.1.0",
         headless: bool = False,
-    ):
+    ) -> None:
         """Initialize vision-based browser."""
         super().__init__(store, user_agent, headless)
 
@@ -116,6 +116,7 @@ class VisionBrowser(Browser):
             model_provider="openai",
             model_name="gpt-4o-mini",
             api_key=None,  # Will be loaded from environment
+            api_base=None,  # Use default API base
             max_tokens=1000,
             temperature=0.1,
         )
@@ -123,6 +124,7 @@ class VisionBrowser(Browser):
         # Warn about missing API keys for providers at init time
 
     def _validate_vision_config(self) -> None:
+        """Validate vision configuration and warn about missing API keys."""
         try:
             import os
 
@@ -257,7 +259,9 @@ class VisionBrowser(Browser):
 
         return None
 
-    def execute_vision_action(self, action: VisionAction) -> bool:
+    def execute_vision_action(
+        self, action: VisionAction
+    ) -> Union[bool, dict[str, Any]]:
         """Execute an action recommended by the vision model."""
         try:
             # Create vision browser action record
@@ -813,7 +817,9 @@ Return the analysis in JSON format with the following structure:
             print(f"Local vision analysis failed: {e}")
             return None
 
-    def _parse_vision_response(self, analysis_data: dict[str, Any]) -> VisionAnalysis:
+    def _parse_vision_response(
+        self, analysis_data: dict[str, Any]
+    ) -> Optional[VisionAnalysis]:
         """Parse vision model response into VisionAnalysis object."""
         try:
             # Convert interactive elements
@@ -1307,7 +1313,7 @@ Rate from 0.0 to 1.0 based on:
         self, analysis: VisionAnalysis, query: str
     ) -> list[str]:
         """Extract URLs from vision analysis of search results."""
-        urls = []
+        urls: list[str] = []
 
         if not analysis.recommended_actions:
             return urls
@@ -1333,7 +1339,7 @@ Rate from 0.0 to 1.0 based on:
             url_pattern = r'https?://[^\s<>"]+'
             matches = re.findall(url_pattern, action.target_description)
             if matches:
-                return matches[0]
+                return str(matches[0])
 
         return None
 
